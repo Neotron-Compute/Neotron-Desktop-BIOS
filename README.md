@@ -1,62 +1,55 @@
-# Neotron-XXX-BIOS
+# Neotron Desktop BIOS
 
-> Template repository for new BIOS implementations. You should delete these
-> quoted blocks and correct the rest of the text as required.
+This is the [Neotron](https://github.com/neotron-compute) BIOS that lets you run the Neotron OS as a Linux, macOS or Windows application!
 
-This is the [Neotron](https://github.com/neotron-compute) BIOS for the FooBar XYZ development board.
+![Build Status](https://github.com/neotron-compute/neotron-desktop-bios/workflows/Build/badge.svg "Github Action Build Status")
 
-![Build Status](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/workflows/Build/badge.svg "Github Action Build Status")
-
-![Format Status](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/workflows/Format/badge.svg "Github Action Format Check Status")
+![Format Status](https://github.com/neotron-compute/neotron-desktop-bios/workflows/Format/badge.svg "Github Action Format Check Status")
 
 ## Compatibility
 
-This BIOS will run on the official FooBar XYZ Developer Kit, and also the FooBar XYZ Explorer board. Both feature the same FooBar XYZ SoC. Other boards with the same SoC can be supported with a minor change to the pin configurations.
+This BIOS uses [pix-engine](https://crates.io/crates/pix-engine), so should run on any platform that pix-engine supports.
+
+## Building
+
+Build and run this BIOS (and use it to boot Neotron OS) with...
+
+```console
+~ $ git checkout https://github.com/neotron-compute/Neotron-Desktop-BIOS.git
+~ $ cd Neotron-Desktop-BIOS
+~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --serial=/dev/ttyS0 --peripheral=sdmmc,./disk.img --os=./libneotron_os.so
+```
+
+Press `Esc` with the GUI window selected to quit the BIOS.
+
+The file `libneotron_os.so` is not supplied. You can build it with:
+
+```console
+~ $ git checkout https://github.com/neotron-compute/neotron-os.git
+~ $ cd neotron-os
+~/neotron-os $ cargo build --release --lib
+~/neotron-os $ ls ./target/release/*.so
+./target/release/libneotron_os.so
+~/neotron-os $ cp ./target/release/libneotron_os.so ~/Neotron-Desktop-BIOS
+```
 
 ## Features
 
-> Replace this with the specs of your board!
-
-The FooBar XYZ Developer Kit offers:
-
-* 128 KiB RAM
-* 512 KiB Flash
-* Cortex-M4 clocked at 64 MHz
-* SD/MMC Slot, with DMA
-* 3-wire TTL UART
-* Hardware accelerated graphics blitter
-* 8-colour VGA output on pins P0, P1, P2, P4 and P5.
-* Stereo sound on the on-board 3.5mm jack
-
-The FooBar XYZ Explorer Board adds:
-
-* On-board LCD with 480x272 resolution (60x17 text mode) in 16 colours
-* RS-232 port
+* GUI window with pixel-perfect video rendering
+* TODO: UART support
+* TODO: SD/MMC emulation support
+* TODO: Audio support
+* TODO: Human Interface Device support
 
 ## Changelog
 
-> Your repo should implement a Changelog in this format. Add a new section
-> every time you tag a release. Don't forget to change `$GITHUB_USERNAME` and
-> `$GITHUB_REPO` to the appropriate values for your repository!
-
-### Unreleased Changes ([Source](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/tree/master) | [Changes](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/compare/v0.2.0...master))
-
-* None
-
-### v0.2.0 ([Source](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/tree/v0.2.0) | [Changes](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/compare/v0.1.0...v0.2.0))
-
-* Fixed changelog in README.
-
-### v0.1.0 ([Source](https://github.com/$GITHUB_USERNAME/$GITHUB_REPO/tree/v0.1.0))
+### Unreleased Changes ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/main))
 
 * First release
 
 ## Licence
 
-> This is an example licence. You can change it if you so desire, but please
-> do pay attention to the licenses of any components you use in your BIOS.
-
-	Neotron-XXX-BIOS Copyright (c) Some Developer, 2019
+	Neotron-Desktop-BIOS Copyright (c) Jonathan 'theJPster' Pallant, 2022
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
