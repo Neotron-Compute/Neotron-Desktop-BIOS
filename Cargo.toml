@@ -9,7 +9,7 @@ license-file = "LICENSE"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-neotron-common-bios = "0.6.1"
+neotron-common-bios = "0.7"
 libloading = "0.7"
 pix-engine = "0.5.4"
 env_logger = "0.9"
