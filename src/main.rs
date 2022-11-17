@@ -1472,7 +1472,7 @@ impl AppState for MyApp {
 			} => {
 				if let Some(key) = key {
 					self.sender.send(AppEvent::KeyDown(key.clone())).unwrap();
-				}				
+				}
 			}
 			_ => {}
 		}
