@@ -10,6 +10,17 @@ This is the [Neotron](https://github.com/neotron-compute) BIOS that lets you run
 
 This BIOS uses [pix-engine](https://crates.io/crates/pix-engine), so should run on any platform that pix-engine supports.
 
+If you have a Mac, run:
+
+```console
+$ brew install sdl2
+$ brew install sdl2_mixer
+$ brew install sdl2_image
+$ export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib" 
+```
+
+You will need to re-run the `export` command before you re-build the application.
+
 ## Building
 
 Build and run this BIOS (and use it to boot Neotron OS) with...

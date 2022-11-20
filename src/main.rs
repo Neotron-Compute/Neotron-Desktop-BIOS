@@ -45,18 +45,30 @@ struct MyApp {
 	mode: common::video::Mode,
 	font8x16: Vec<TextureId>,
 	font8x8: Vec<TextureId>,
+	sender: std::sync::mpsc::Sender<AppEvent>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum AppEvent {
+	Started,
+	KeyUp(Key),
+	KeyDown(Key),
 }
 
 // ===========================================================================
 // Global Variables
 // ===========================================================================
 
-/// The VRAM we share in a very hazardous with the OS.
+/// The VRAM we share in a very hazardous way with the OS.
 ///
 /// Big enough for 640x480 @ 256 colour.
 static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
 
-const SCALE_FACTOR: f32 = 3.0;
+/// Scale the display to make it readable on a modern monitor
+const SCALE_FACTOR: f32 = 2.0;
+
+/// When we booted up
+static BOOT_TIME: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
 /// The functions we export to the OS
 static BIOS_API: common::Api = common::Api {
@@ -66,8 +78,8 @@ static BIOS_API: common::Api = common::Api {
 	serial_configure,
 	serial_write,
 	serial_read,
-	time_get,
-	time_set,
+	time_clock_get,
+	time_clock_set,
 	configuration_get,
 	configuration_set,
 	video_is_valid_mode,
@@ -99,7 +111,15 @@ static BIOS_API: common::Api = common::Api {
 	bus_get_info,
 	bus_write_read,
 	bus_exchange,
-	delay,
+	time_ticks_get,
+	time_ticks_per_second,
+	bus_interrupt_status,
+	block_dev_get_info,
+	block_dev_eject,
+	block_write,
+	block_read,
+	block_verify,
+	power_idle,
 };
 
 /// Our standard 256 colour palette
@@ -620,6 +640,9 @@ static PALETTE: [AtomicU32; 256] = [
 
 static VIDEO_MODE: AtomicU8 = AtomicU8::new(0);
 
+static EV_QUEUE: std::sync::Mutex<Option<std::sync::mpsc::Receiver<AppEvent>>> =
+	std::sync::Mutex::new(None);
+
 // ===========================================================================
 // Macros
 // ===========================================================================
@@ -641,6 +664,8 @@ fn main() {
 	// Let's go!
 	info!("Netron Desktop BIOS");
 
+	*BOOT_TIME.lock().unwrap() = Some(std::time::Instant::now());
+
 	for char_idx in 0..(80 * 60) {
 		unsafe {
 			// Blank
@@ -656,16 +681,9 @@ fn main() {
 		if let Some(os_path) = arg.strip_prefix("--os=") {
 			info!("Loading OS from {:?}", os_path);
 			lib = unsafe { Some(libloading::Library::new(os_path).expect("library to load")) };
+			println!("Loaded!");
 		}
 	}
-
-	// Run the OS
-	let lib = lib.unwrap();
-	std::thread::spawn(move || unsafe {
-		let main_func: libloading::Symbol<unsafe extern "C" fn(api: &'static common::Api) -> !> =
-			lib.get(b"main").expect("main() found");
-		main_func(&BIOS_API);
-	});
 
 	// Make a window
 	let mut engine = PixEngine::builder()
@@ -675,11 +693,30 @@ fn main() {
 		.target_frame_rate(60)
 		.build()
 		.unwrap();
+	let (sender, receiver) = std::sync::mpsc::channel();
 	let mut app = MyApp {
 		mode: unsafe { common::video::Mode::from_u8(0xFF) },
 		font8x16: Vec::new(),
 		font8x8: Vec::new(),
+		sender,
 	};
+
+	EV_QUEUE.lock().unwrap().replace(receiver);
+
+	// Run the OS
+	let lib = lib.unwrap();
+	std::thread::spawn(move || unsafe {
+		// Wait for Started message
+		let queue = EV_QUEUE.lock().unwrap();
+		let ev = queue.as_ref().unwrap().recv().unwrap();
+		assert_eq!(ev, AppEvent::Started);
+		drop(queue);
+		info!("Video init complete. OS starting...");
+		let main_func: libloading::Symbol<unsafe extern "C" fn(api: &'static common::Api) -> !> =
+			lib.get(b"main").expect("main() found");
+		main_func(&BIOS_API);
+	});
+
 	engine.run(&mut app).unwrap();
 }
 
@@ -766,10 +803,17 @@ extern "C" fn serial_read(
 ///
 /// If the BIOS does not have a battery-backed clock, or if that battery has
 /// failed to keep time, the system starts up assuming it is the epoch.
-extern "C" fn time_get() -> common::Time {
-	debug!("time_get()");
-	// TODO: Read from the MCP7940N
-	common::Time { secs: 0, nsecs: 0 }
+extern "C" fn time_clock_get() -> common::Time {
+	debug!("time_clock_get()");
+	// 946684800 seconds between 2000-01-01 and 1970-01-01
+	let epoch = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(946684800);
+	let difference = epoch.elapsed().unwrap_or_default();
+	// We're good until 2068, when I shall be retired.
+	assert!(difference.as_secs() <= u64::from(u32::MAX));
+	common::Time {
+		secs: difference.as_secs() as u32,
+		nsecs: difference.subsec_nanos(),
+	}
 }
 
 /// Set the current wall time.
@@ -781,9 +825,8 @@ extern "C" fn time_get() -> common::Time {
 /// time (e.g. the user has updated the current time, or if you get a GPS
 /// fix). The BIOS should push the time out to the battery-backed Real
 /// Time Clock, if it has one.
-extern "C" fn time_set(_time: common::Time) {
-	debug!("time_set()");
-	// TODO: Update the MCP7940N RTC
+extern "C" fn time_clock_set(time: common::Time) {
+	debug!("time_clock_set({:?})", time);
 }
 
 /// Get the configuration data block.
@@ -931,18 +974,176 @@ extern "C" fn video_mode_needs_vram(_mode: common::video::Mode) -> bool {
 /// (other than Region 0), so faster memory should be listed first.
 ///
 /// If the region number given is invalid, the function returns `(null, 0)`.
-extern "C" fn memory_get_region(_region: u8) -> common::Result<common::MemoryRegion> {
-	debug!("memory_get_region()");
-	common::Result::Err(common::Error::Unimplemented)
+extern "C" fn memory_get_region(region: u8) -> common::Option<common::MemoryRegion> {
+	static mut MEMORY_BLOCK: (*mut u8, usize) = (std::ptr::null_mut(), 0);
+	match region {
+		0 => {
+			if unsafe { MEMORY_BLOCK.0.is_null() } {
+				// Allocate 256 KiB of storage space for the OS to use
+				let mut data = Box::new([0u8; 256 * 1024]);
+				unsafe {
+					MEMORY_BLOCK.0 = data.as_mut_ptr() as *mut u8;
+					MEMORY_BLOCK.1 = std::mem::size_of_val(&*data);
+				}
+				std::mem::forget(data);
+			}
+			common::Option::Some(common::MemoryRegion {
+				start: unsafe { MEMORY_BLOCK.0 },
+				length: unsafe { MEMORY_BLOCK.1 },
+				kind: common::MemoryKind::Ram,
+			})
+		}
+		_ => common::Option::None,
+	}
 }
 
 /// Get the next available HID event, if any.
 ///
 /// This function doesn't block. It will return `Ok(None)` if there is no event ready.
 extern "C" fn hid_get_event() -> common::Result<common::Option<common::hid::HidEvent>> {
-	debug!("hid_get_event()");
-	// TODO: Support some HID events
-	common::Result::Ok(common::Option::None)
+	let queue = EV_QUEUE.lock().unwrap();
+	match queue.as_ref().unwrap().try_recv() {
+		Ok(AppEvent::KeyUp(key)) => {
+			let code = common::hid::HidEvent::KeyRelease(convert_keycode(key));
+			debug!("hid_get_event() -> {:?}", code);
+			common::Result::Ok(common::Option::Some(code))
+		}
+		Ok(AppEvent::KeyDown(key)) => {
+			let code = common::hid::HidEvent::KeyPress(convert_keycode(key));
+			debug!("hid_get_event() -> {:?}", code);
+			common::Result::Ok(common::Option::Some(code))
+		}
+		_ => common::Result::Ok(common::Option::None),
+	}
+}
+
+/// Convert a pix-engine keycode into a Neotron BIOS keycode
+fn convert_keycode(key: Key) -> common::hid::KeyCode {
+	match key {
+		Key::Backspace => common::hid::KeyCode::Backspace,
+		Key::Tab => common::hid::KeyCode::Tab,
+		Key::Return => common::hid::KeyCode::Enter,
+		Key::Escape => common::hid::KeyCode::Escape,
+		Key::Space => common::hid::KeyCode::Spacebar,
+		// Key::Exclaim => common::hid::KeyCode::Exclaim,
+		// Key::Quotedbl => common::hid::KeyCode::Quotedbl,
+		// Key::Hash => common::hid::KeyCode::Hash,
+		// Key::Dollar => common::hid::KeyCode::Dollar,
+		// Key::Percent => common::hid::KeyCode::Percent,
+		// Key::Ampersand => common::hid::KeyCode::Ampersand,
+		// Key::Quote => common::hid::KeyCode::Quote,
+		// Key::LeftParen => common::hid::KeyCode::LeftParen,
+		// Key::RightParen => common::hid::KeyCode::RightParen,
+		// Key::Asterisk => common::hid::KeyCode::Asterisk,
+		// Key::Plus => common::hid::KeyCode::Plus,
+		Key::Comma => common::hid::KeyCode::Comma,
+		Key::Minus => common::hid::KeyCode::Minus,
+		Key::Period => common::hid::KeyCode::Fullstop,
+		Key::Slash => common::hid::KeyCode::Slash,
+		Key::Num0 => common::hid::KeyCode::Key0,
+		Key::Num1 => common::hid::KeyCode::Key1,
+		Key::Num2 => common::hid::KeyCode::Key2,
+		Key::Num3 => common::hid::KeyCode::Key3,
+		Key::Num4 => common::hid::KeyCode::Key4,
+		Key::Num5 => common::hid::KeyCode::Key5,
+		Key::Num6 => common::hid::KeyCode::Key6,
+		Key::Num7 => common::hid::KeyCode::Key7,
+		Key::Num8 => common::hid::KeyCode::Key8,
+		Key::Num9 => common::hid::KeyCode::Key9,
+		// Key::Colon => common::hid::KeyCode::Colon,
+		Key::Semicolon => common::hid::KeyCode::SemiColon,
+		// Key::Less => common::hid::KeyCode::Less,
+		Key::Equals => common::hid::KeyCode::Equals,
+		// Key::Greater => common::hid::KeyCode::Greater,
+		// Key::Question => common::hid::KeyCode::Question,
+		// Key::At => common::hid::KeyCode::At,
+		// Key::LeftBracket => common::hid::KeyCode::LeftBracket,
+		// Key::Backslash => common::hid::KeyCode::Backslash,
+		// Key::RightBracket => common::hid::KeyCode::RightBracket,
+		// Key::Caret => common::hid::KeyCode::Caret,
+		// Key::Underscore => common::hid::KeyCode::Underscore,
+		// Key::Backquote => common::hid::KeyCode::Backquote,
+		Key::A => common::hid::KeyCode::A,
+		Key::B => common::hid::KeyCode::B,
+		Key::C => common::hid::KeyCode::C,
+		Key::D => common::hid::KeyCode::D,
+		Key::E => common::hid::KeyCode::E,
+		Key::F => common::hid::KeyCode::F,
+		Key::G => common::hid::KeyCode::G,
+		Key::H => common::hid::KeyCode::H,
+		Key::I => common::hid::KeyCode::I,
+		Key::J => common::hid::KeyCode::J,
+		Key::K => common::hid::KeyCode::K,
+		Key::L => common::hid::KeyCode::L,
+		Key::M => common::hid::KeyCode::M,
+		Key::N => common::hid::KeyCode::N,
+		Key::O => common::hid::KeyCode::O,
+		Key::P => common::hid::KeyCode::P,
+		Key::Q => common::hid::KeyCode::Q,
+		Key::R => common::hid::KeyCode::R,
+		Key::S => common::hid::KeyCode::S,
+		Key::T => common::hid::KeyCode::T,
+		Key::U => common::hid::KeyCode::U,
+		Key::V => common::hid::KeyCode::V,
+		Key::W => common::hid::KeyCode::W,
+		Key::X => common::hid::KeyCode::X,
+		Key::Y => common::hid::KeyCode::Y,
+		Key::Z => common::hid::KeyCode::Z,
+		Key::Delete => common::hid::KeyCode::Delete,
+		Key::CapsLock => common::hid::KeyCode::CapsLock,
+		Key::F1 => common::hid::KeyCode::F1,
+		Key::F2 => common::hid::KeyCode::F2,
+		Key::F3 => common::hid::KeyCode::F3,
+		Key::F4 => common::hid::KeyCode::F4,
+		Key::F5 => common::hid::KeyCode::F5,
+		Key::F6 => common::hid::KeyCode::F6,
+		Key::F7 => common::hid::KeyCode::F7,
+		Key::F8 => common::hid::KeyCode::F8,
+		Key::F9 => common::hid::KeyCode::F9,
+		Key::F10 => common::hid::KeyCode::F10,
+		Key::F11 => common::hid::KeyCode::F11,
+		Key::F12 => common::hid::KeyCode::F12,
+		Key::PrintScreen => common::hid::KeyCode::PrintScreen,
+		Key::ScrollLock => common::hid::KeyCode::ScrollLock,
+		Key::Pause => common::hid::KeyCode::PauseBreak,
+		Key::Insert => common::hid::KeyCode::Insert,
+		Key::Home => common::hid::KeyCode::Home,
+		Key::PageUp => common::hid::KeyCode::PageUp,
+		Key::End => common::hid::KeyCode::End,
+		Key::PageDown => common::hid::KeyCode::PageDown,
+		Key::Right => common::hid::KeyCode::ArrowRight,
+		Key::Left => common::hid::KeyCode::ArrowLeft,
+		Key::Down => common::hid::KeyCode::ArrowDown,
+		Key::Up => common::hid::KeyCode::ArrowUp,
+		Key::NumLock => common::hid::KeyCode::NumpadLock,
+		Key::KpDivide => common::hid::KeyCode::NumpadSlash,
+		Key::KpMultiply => common::hid::KeyCode::NumpadStar,
+		Key::KpMinus => common::hid::KeyCode::NumpadMinus,
+		Key::KpPlus => common::hid::KeyCode::NumpadPlus,
+		Key::KpEnter => common::hid::KeyCode::NumpadEnter,
+		Key::Kp1 => common::hid::KeyCode::Numpad1,
+		Key::Kp2 => common::hid::KeyCode::Numpad2,
+		Key::Kp3 => common::hid::KeyCode::Numpad3,
+		Key::Kp4 => common::hid::KeyCode::Numpad4,
+		Key::Kp5 => common::hid::KeyCode::Numpad5,
+		Key::Kp6 => common::hid::KeyCode::Numpad6,
+		Key::Kp7 => common::hid::KeyCode::Numpad7,
+		Key::Kp8 => common::hid::KeyCode::Numpad8,
+		Key::Kp9 => common::hid::KeyCode::Numpad9,
+		Key::Kp0 => common::hid::KeyCode::Numpad0,
+		Key::KpPeriod => common::hid::KeyCode::NumpadPeriod,
+		// Key::KpEquals => common::hid::KeyCode::KpEquals,
+		// Key::KpComma => common::hid::KeyCode::KpComma,
+		Key::LCtrl => common::hid::KeyCode::ControlLeft,
+		Key::LShift => common::hid::KeyCode::ShiftLeft,
+		Key::LAlt => common::hid::KeyCode::AltLeft,
+		Key::LGui => common::hid::KeyCode::WindowsLeft,
+		Key::RCtrl => common::hid::KeyCode::ControlRight,
+		Key::RShift => common::hid::KeyCode::ShiftRight,
+		Key::RAlt => common::hid::KeyCode::AltRight,
+		Key::RGui => common::hid::KeyCode::WindowsRight,
+		_ => common::hid::KeyCode::X,
+	}
 }
 
 /// Control the keyboard LEDs.
@@ -1103,9 +1304,75 @@ extern "C" fn bus_exchange(_buffer: common::ApiBuffer) -> common::Result<()> {
 	unimplemented!();
 }
 
-extern "C" fn delay(timeout: common::Timeout) {
-	debug!("delay({} ms)", timeout.get_ms());
-	std::thread::sleep(std::time::Duration::from_millis(timeout.get_ms() as u64))
+extern "C" fn time_ticks_get() -> common::Ticks {
+	let boot_time = BOOT_TIME.lock().unwrap().unwrap();
+	let difference = boot_time.elapsed();
+	debug!("time_ticks_get() -> {}", difference.as_millis());
+	common::Ticks(difference.as_millis() as u64)
+}
+
+/// We simulate a 1 kHz tick
+extern "C" fn time_ticks_per_second() -> common::Ticks {
+	debug!("time_ticks_per_second()");
+	common::Ticks(1000)
+}
+
+extern "C" fn bus_interrupt_status() -> u32 {
+	debug!("bus_interrupt_status()");
+	0
+}
+
+extern "C" fn block_dev_get_info(dev_id: u8) -> common::Option<common::block_dev::DeviceInfo> {
+	debug!("block_dev_get_info(dev_id: {})", dev_id);
+	common::Option::None
+}
+
+extern "C" fn block_dev_eject(dev_id: u8) -> common::Result<()> {
+	debug!("block_dev_eject(dev_id: {})", dev_id);
+	common::Result::Ok(())
+}
+
+extern "C" fn block_write(
+	dev_id: u8,
+	block_idx: common::block_dev::BlockIdx,
+	num_blocks: u8,
+	buffer: common::ApiByteSlice,
+) -> common::Result<()> {
+	debug!(
+		"block_write(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
+		dev_id, block_idx.0, num_blocks, buffer.data_len
+	);
+	common::Result::Ok(())
+}
+
+extern "C" fn block_read(
+	dev_id: u8,
+	block_idx: common::block_dev::BlockIdx,
+	num_blocks: u8,
+	buffer: common::ApiBuffer,
+) -> common::Result<()> {
+	debug!(
+		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
+		dev_id, block_idx.0, num_blocks, buffer.data_len
+	);
+	common::Result::Ok(())
+}
+
+extern "C" fn block_verify(
+	dev_id: u8,
+	block_idx: common::block_dev::BlockIdx,
+	num_blocks: u8,
+	buffer: common::ApiByteSlice,
+) -> common::Result<()> {
+	debug!(
+		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
+		dev_id, block_idx.0, num_blocks, buffer.data_len
+	);
+	common::Result::Ok(())
+}
+
+extern "C" fn power_idle() {
+	std::thread::sleep(std::time::Duration::from_millis(1));
 }
 
 // ===========================================================================
@@ -1115,6 +1382,10 @@ extern "C" fn delay(timeout: common::Timeout) {
 impl MyApp {
 	const NUM_FG: usize = 16;
 
+	/// Generate an RGBA texture for each glyph, in each foreground colour.
+	///
+	/// We have 256 glyphs, in each of 16 colours, so this is expensive and
+	/// slow. But it makes rendering text acceptably fast.
 	fn render_font(
 		font: &font::Font,
 		texture_buffer: &mut Vec<TextureId>,
@@ -1135,13 +1406,13 @@ impl MyApp {
 				s.with_texture(texture_id, |s: &mut PixState| -> PixResult<()> {
 					s.background(Color::TRANSPARENT);
 					s.clear()?;
-					s.fill(rgb!(fg.red(), fg.green(), fg.blue(), 255));
-					for font_y in 0..font.height {
+					s.stroke(rgb!(fg.red(), fg.green(), fg.blue(), 255));
+					for font_y in 0..(font.height as i32) {
 						let mut font_line =
 							font.data[((glyph as usize) * font.height) + font_y as usize];
-						for font_x in 0..8 {
+						for font_x in 0..8i32 {
 							if (font_line & 0x80) != 0 {
-								s.rect([font_x as i32, font_y as i32, 1, 1])?;
+								s.point(Point::new([font_x, font_y]))?;
 							};
 							font_line <<= 1;
 						}
@@ -1155,6 +1426,8 @@ impl MyApp {
 		Ok(())
 	}
 
+	/// Generate an RGBA texture for each glyph, in each foreground colour, in
+	/// each font.
 	fn render_glyphs(&mut self, s: &mut PixState) -> PixResult<()> {
 		Self::render_font(&font::font16::FONT, &mut self.font8x16, s)?;
 		Self::render_font(&font::font8::FONT, &mut self.font8x8, s)?;
@@ -1166,6 +1439,8 @@ impl AppState for MyApp {
 	/// Perform application initialisation.
 	fn on_start(&mut self, s: &mut PixState) -> PixResult<()> {
 		self.render_glyphs(s)?;
+		// Let the rest of the OS start now
+		self.sender.send(AppEvent::Started).unwrap();
 		Ok(())
 	}
 
@@ -1174,11 +1449,28 @@ impl AppState for MyApp {
 		std::process::exit(0);
 	}
 
-	fn on_key_pressed(&mut self, s: &mut PixState, event: KeyEvent) -> PixResult<bool> {
-		if event.key == Key::Escape {
-			s.quit();
+	/// Called whenever the app has an event to process.
+	///
+	/// We send key up and key down events into a queue for the OS to process later.
+	fn on_event(&mut self, _s: &mut PixState, event: &Event) -> PixResult<()> {
+		match event {
+			Event::KeyUp {
+				key: Some(key),
+				keymod: _,
+				repeat: _,
+			} => {
+				self.sender.send(AppEvent::KeyUp(*key)).unwrap();
+			}
+			Event::KeyDown {
+				key: Some(key),
+				keymod: _,
+				repeat: _,
+			} => {
+				self.sender.send(AppEvent::KeyDown(*key)).unwrap();
+			}
+			_ => {}
 		}
-		Ok(false)
+		Ok(())
 	}
 
 	/// Called in a tight-loop to update the application.
