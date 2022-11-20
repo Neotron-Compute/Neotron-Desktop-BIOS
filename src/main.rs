@@ -978,7 +978,7 @@ extern "C" fn memory_get_region(region: u8) -> common::Option<common::MemoryRegi
 	static mut MEMORY_BLOCK: (*mut u8, usize) = (std::ptr::null_mut(), 0);
 	match region {
 		0 => {
-			if unsafe { MEMORY_BLOCK.0 } == std::ptr::null_mut() {
+			if unsafe { MEMORY_BLOCK.0.is_null() } {
 				// Allocate 256 KiB of storage space for the OS to use
 				let mut data = Box::new([0u8; 256 * 1024]);
 				unsafe {
@@ -1004,16 +1004,14 @@ extern "C" fn hid_get_event() -> common::Result<common::Option<common::hid::HidE
 	let queue = EV_QUEUE.lock().unwrap();
 	match queue.as_ref().unwrap().try_recv() {
 		Ok(AppEvent::KeyUp(key)) => {
-			debug!("hid_get_event(KeyUp({:?}))", key);
-			common::Result::Ok(common::Option::Some(common::hid::HidEvent::KeyRelease(
-				convert_keycode(key),
-			)))
+			let code = common::hid::HidEvent::KeyRelease(convert_keycode(key));
+			debug!("hid_get_event() -> {:?}", code);
+			common::Result::Ok(common::Option::Some(code))
 		}
 		Ok(AppEvent::KeyDown(key)) => {
-			debug!("hid_get_event(KeyDown({:?}))", key);
-			common::Result::Ok(common::Option::Some(common::hid::HidEvent::KeyPress(
-				convert_keycode(key),
-			)))
+			let code = common::hid::HidEvent::KeyPress(convert_keycode(key));
+			debug!("hid_get_event() -> {:?}", code);
+			common::Result::Ok(common::Option::Some(code))
 		}
 		_ => common::Result::Ok(common::Option::None),
 	}
@@ -1457,22 +1455,18 @@ impl AppState for MyApp {
 	fn on_event(&mut self, _s: &mut PixState, event: &Event) -> PixResult<()> {
 		match event {
 			Event::KeyUp {
-				key,
-				keymod,
-				repeat,
+				key: Some(key),
+				keymod: _,
+				repeat: _,
 			} => {
-				if let Some(key) = key {
-					self.sender.send(AppEvent::KeyUp(key.clone())).unwrap();
-				}
+				self.sender.send(AppEvent::KeyUp(*key)).unwrap();
 			}
 			Event::KeyDown {
-				key,
-				keymod,
-				repeat,
+				key: Some(key),
+				keymod: _,
+				repeat: _,
 			} => {
-				if let Some(key) = key {
-					self.sender.send(AppEvent::KeyDown(key.clone())).unwrap();
-				}
+				self.sender.send(AppEvent::KeyDown(*key)).unwrap();
 			}
 			_ => {}
 		}
