@@ -28,7 +28,11 @@
 // ===========================================================================
 
 use std::io::prelude::*;
-use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
+use std::path::PathBuf;
+use std::sync::{
+	atomic::{AtomicU32, AtomicU8, Ordering},
+	mpsc, Mutex,
+};
 
 use clap::Parser;
 use common::video::RGBColour;
@@ -47,7 +51,7 @@ struct MyApp {
 	mode: common::video::Mode,
 	font8x16: Vec<TextureId>,
 	font8x8: Vec<TextureId>,
-	sender: std::sync::mpsc::Sender<AppEvent>,
+	sender: mpsc::Sender<AppEvent>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -68,10 +72,13 @@ struct Framebuffer<const N: usize> {
 struct Args {
 	/// Path to the OS library
 	#[arg(long)]
-	os: std::path::PathBuf,
+	os: PathBuf,
 	/// Path to a file to use as a disk image
 	#[arg(long)]
-	disk: Option<std::path::PathBuf>,
+	disk: Option<PathBuf>,
+	/// Path to NVRAM file
+	#[arg(long)]
+	nvram: Option<PathBuf>,
 }
 
 /// All our emulated hardware
@@ -99,7 +106,7 @@ static FRAMEBUFFER: Framebuffer<{ 640 * 480 }> = Framebuffer::new();
 const SCALE_FACTOR: f32 = 2.0;
 
 /// When we booted up
-static HARDWARE: std::sync::Mutex<Option<Hardware>> = std::sync::Mutex::new(None);
+static HARDWARE: Mutex<Option<Hardware>> = Mutex::new(None);
 
 /// The functions we export to the OS
 static BIOS_API: common::Api = common::Api {
@@ -673,8 +680,11 @@ static PALETTE: [AtomicU32; 256] = [
 
 static VIDEO_MODE: AtomicU8 = AtomicU8::new(0);
 
-static EV_QUEUE: std::sync::Mutex<Option<std::sync::mpsc::Receiver<AppEvent>>> =
-	std::sync::Mutex::new(None);
+/// HID events come from here
+static EV_QUEUE: Mutex<Option<mpsc::Receiver<AppEvent>>> = Mutex::new(None);
+
+/// Where the OS config is read from or written to.
+static CONFIG_FILE_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 // ===========================================================================
 // Macros
@@ -722,15 +732,14 @@ fn main() {
 	}
 
 	// Process args
-	let mut lib = None;
-	for arg in std::env::args() {
-		if let Some(os_path) = arg.strip_prefix("--os=") {
-			info!("Loading OS from {:?}", os_path);
-			lib = unsafe { Some(libloading::Library::new(os_path).expect("library to load")) };
-			println!("Loaded!");
-		}
+	info!("Loading OS from: {}", args.os.display());
+	let lib = unsafe { libloading::Library::new(args.os).expect("library to load") };
+	println!("Loaded!");
+
+	if let Some(config_path) = args.nvram {
+		info!("Loading OS config from: {}", config_path.display());
+		*CONFIG_FILE_PATH.lock().unwrap() = Some(config_path);
 	}
-	let lib = lib.expect("Fetching --os=filename from args");
 
 	// Make a window
 	let mut engine = Engine::builder()
@@ -740,7 +749,7 @@ fn main() {
 		.target_frame_rate(60)
 		.build()
 		.unwrap();
-	let (sender, receiver) = std::sync::mpsc::channel();
+	let (sender, receiver) = mpsc::channel();
 	let mut app = MyApp {
 		mode: unsafe { common::video::Mode::from_u8(0) },
 		font8x16: Vec::new(),
@@ -883,17 +892,43 @@ extern "C" fn time_clock_set(time: common::Time) {
 /// Configuration data is, to the BIOS, just a block of bytes of a given
 /// length. How it stores them is up to the BIOS - it could be EEPROM, or
 /// battery-backed SRAM.
-extern "C" fn configuration_get(_buffer: common::FfiBuffer) -> common::ApiResult<usize> {
-	debug!("configuration_get()");
-	Err(common::Error::Unimplemented).into()
+extern "C" fn configuration_get(mut os_buffer: common::FfiBuffer) -> common::ApiResult<usize> {
+	let file_path = CONFIG_FILE_PATH.lock().unwrap().clone();
+	let Some(os_buffer) = os_buffer.as_mut_slice() else {
+		return common::ApiResult::Err(common::Error::DeviceError(0));
+	};
+	match file_path.as_ref() {
+		Some(path) => match std::fs::read(path) {
+			Ok(read_data) => {
+				for (src, dest) in read_data.iter().zip(os_buffer.iter_mut()) {
+					*dest = *src;
+				}
+				common::ApiResult::Ok(read_data.len())
+			}
+			Err(_e) => {
+				println!("Failed to get config from {:?}", path);
+				common::ApiResult::Err(common::Error::DeviceError(0))
+			}
+		},
+		None => common::ApiResult::Err(common::Error::Unimplemented),
+	}
 }
 
 /// Set the configuration data block.
 ///
 /// See `configuration_get`.
-extern "C" fn configuration_set(_buffer: common::FfiByteSlice) -> common::ApiResult<()> {
-	debug!("configuration_set()");
-	Err(common::Error::Unimplemented).into()
+extern "C" fn configuration_set(buffer: common::FfiByteSlice) -> common::ApiResult<()> {
+	let file_path = CONFIG_FILE_PATH.lock().unwrap().clone();
+	match file_path.as_ref() {
+		Some(path) => match std::fs::write(path, buffer.as_slice()) {
+			Ok(_) => common::ApiResult::Ok(()),
+			Err(_e) => {
+				println!("Failed to write config to {:?}", path);
+				common::ApiResult::Err(common::Error::DeviceError(0))
+			}
+		},
+		None => common::ApiResult::Err(common::Error::Unimplemented),
+	}
 }
 
 /// Does this Neotron BIOS support this video mode?

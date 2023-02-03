@@ -12,3 +12,5 @@
 # Our uncompressed disk image
 disk.img
 
+# This where you should store your OS config
+nvram.dat

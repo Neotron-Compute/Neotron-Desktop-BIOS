@@ -28,7 +28,7 @@ Build and run this BIOS (and use it to boot Neotron OS) with...
 ```console
 ~ $ git checkout https://github.com/neotron-compute/Neotron-Desktop-BIOS.git
 ~ $ cd Neotron-Desktop-BIOS
-~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --serial=/dev/ttyS0 --peripheral=sdmmc,./disk.img --os=./libneotron_os.so
+~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --config=./nvram.dat --os=./libneotron_os.so
 ```
 
 Press `Esc` with the GUI window selected to quit the BIOS.
