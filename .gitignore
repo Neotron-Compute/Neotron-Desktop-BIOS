@@ -12,3 +12,7 @@ Cargo.lock
 # Shared libraries from OS build
 *.dylib
 *.so
+
+# Our uncompressed disk image
+disk.img
+
