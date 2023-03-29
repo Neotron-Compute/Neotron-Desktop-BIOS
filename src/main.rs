@@ -62,7 +62,48 @@ enum AppEvent {
 /// The VRAM we share in a very hazardous way with the OS.
 ///
 /// Big enough for 640x480 @ 256 colour.
-static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
+// static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
+static FRAMEBUFFER: Framebuffer<{ 640 * 480 }> = Framebuffer::new();
+
+struct Framebuffer<const N: usize> {
+	contents: std::cell::UnsafeCell<[u8; N]>,
+}
+
+impl<const N: usize> Framebuffer<N> {
+	const fn new() -> Framebuffer<N> {
+		Framebuffer {
+			contents: std::cell::UnsafeCell::new([0u8; N]),
+		}
+	}
+
+	fn write_at(&self, offset: usize, value: u8) {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer write");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *mut u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.write_volatile(value);
+		}
+	}
+
+	fn get_at(&self, offset: usize) -> u8 {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer read");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *const u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.read_volatile()
+		}
+	}
+
+	fn get_pointer(&self) -> *mut u8 {
+		self.contents.get() as *mut u8
+	}
+}
+
+unsafe impl<const N: usize> Sync for Framebuffer<N> {}
 
 /// Scale the display to make it readable on a modern monitor
 const SCALE_FACTOR: f32 = 2.0;
@@ -655,7 +696,7 @@ static EV_QUEUE: std::sync::Mutex<Option<std::sync::mpsc::Receiver<AppEvent>>> =
 
 /// The entry point to our program.
 ///
-/// We set up a game window using ggez. The event loop pumps in this thread.
+/// We set up a game window using PixEngine. The event loop pumps in this thread.
 ///
 /// We then load the OS from the `so` file given, and jump to it in a new thread.
 fn main() {
@@ -666,13 +707,16 @@ fn main() {
 
 	*BOOT_TIME.lock().unwrap() = Some(std::time::Instant::now());
 
+	let white_on_black = common::video::Attr::new(
+		common::video::TextForegroundColour::WHITE,
+		common::video::TextBackgroundColour::BLACK,
+		false,
+	);
 	for char_idx in 0..(80 * 60) {
-		unsafe {
-			// Blank
-			FRAMEBUFFER[char_idx * 2] = b' ';
-			// White on Black
-			FRAMEBUFFER[(char_idx * 2) + 1] = 0xF0;
-		}
+		// Blank
+		FRAMEBUFFER.write_at(char_idx * 2, b' ');
+		// White on Black
+		FRAMEBUFFER.write_at((char_idx * 2) + 1, white_on_black.as_u8());
 	}
 
 	// Process args
@@ -926,11 +970,9 @@ extern "C" fn video_get_mode() -> common::video::Mode {
 /// to provide the 'basic' text buffer experience from reserves, so this
 /// function will never return `null` on start-up.
 extern "C" fn video_get_framebuffer() -> *mut u8 {
-	unsafe {
-		let p = FRAMEBUFFER.as_mut_ptr();
-		debug!("video_get_framebuffer() -> {:p}", p);
-		p
-	}
+	let p = FRAMEBUFFER.get_pointer();
+	debug!("video_get_framebuffer() -> {:p}", p);
+	p
 }
 
 /// Set the framebuffer address.
@@ -1022,24 +1064,24 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 	match key {
 		Key::Backspace => common::hid::KeyCode::Backspace,
 		Key::Tab => common::hid::KeyCode::Tab,
-		Key::Return => common::hid::KeyCode::Enter,
+		Key::Return => common::hid::KeyCode::Return,
 		Key::Escape => common::hid::KeyCode::Escape,
 		Key::Space => common::hid::KeyCode::Spacebar,
 		// Key::Exclaim => common::hid::KeyCode::Exclaim,
 		// Key::Quotedbl => common::hid::KeyCode::Quotedbl,
-		// Key::Hash => common::hid::KeyCode::Hash,
+		Key::Hash => common::hid::KeyCode::Oem7,
 		// Key::Dollar => common::hid::KeyCode::Dollar,
 		// Key::Percent => common::hid::KeyCode::Percent,
 		// Key::Ampersand => common::hid::KeyCode::Ampersand,
-		// Key::Quote => common::hid::KeyCode::Quote,
+		Key::Quote => common::hid::KeyCode::Oem3,
 		// Key::LeftParen => common::hid::KeyCode::LeftParen,
 		// Key::RightParen => common::hid::KeyCode::RightParen,
 		// Key::Asterisk => common::hid::KeyCode::Asterisk,
 		// Key::Plus => common::hid::KeyCode::Plus,
-		Key::Comma => common::hid::KeyCode::Comma,
-		Key::Minus => common::hid::KeyCode::Minus,
-		Key::Period => common::hid::KeyCode::Fullstop,
-		Key::Slash => common::hid::KeyCode::Slash,
+		Key::Comma => common::hid::KeyCode::OemComma,
+		Key::Minus => common::hid::KeyCode::OemMinus,
+		Key::Period => common::hid::KeyCode::OemPeriod,
+		Key::Slash => common::hid::KeyCode::Oem2,
 		Key::Num0 => common::hid::KeyCode::Key0,
 		Key::Num1 => common::hid::KeyCode::Key1,
 		Key::Num2 => common::hid::KeyCode::Key2,
@@ -1051,18 +1093,18 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 		Key::Num8 => common::hid::KeyCode::Key8,
 		Key::Num9 => common::hid::KeyCode::Key9,
 		// Key::Colon => common::hid::KeyCode::Colon,
-		Key::Semicolon => common::hid::KeyCode::SemiColon,
+		Key::Semicolon => common::hid::KeyCode::Oem1,
 		// Key::Less => common::hid::KeyCode::Less,
-		Key::Equals => common::hid::KeyCode::Equals,
+		Key::Equals => common::hid::KeyCode::OemPlus,
 		// Key::Greater => common::hid::KeyCode::Greater,
 		// Key::Question => common::hid::KeyCode::Question,
 		// Key::At => common::hid::KeyCode::At,
-		// Key::LeftBracket => common::hid::KeyCode::LeftBracket,
-		// Key::Backslash => common::hid::KeyCode::Backslash,
-		// Key::RightBracket => common::hid::KeyCode::RightBracket,
+		Key::LeftBracket => common::hid::KeyCode::Oem4,
+		Key::Backslash => common::hid::KeyCode::Oem5,
+		Key::RightBracket => common::hid::KeyCode::Oem6,
 		// Key::Caret => common::hid::KeyCode::Caret,
 		// Key::Underscore => common::hid::KeyCode::Underscore,
-		// Key::Backquote => common::hid::KeyCode::Backquote,
+		Key::Backquote => common::hid::KeyCode::Oem8,
 		Key::A => common::hid::KeyCode::A,
 		Key::B => common::hid::KeyCode::B,
 		Key::C => common::hid::KeyCode::C,
@@ -1116,10 +1158,10 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 		Key::Down => common::hid::KeyCode::ArrowDown,
 		Key::Up => common::hid::KeyCode::ArrowUp,
 		Key::NumLock => common::hid::KeyCode::NumpadLock,
-		Key::KpDivide => common::hid::KeyCode::NumpadSlash,
-		Key::KpMultiply => common::hid::KeyCode::NumpadStar,
-		Key::KpMinus => common::hid::KeyCode::NumpadMinus,
-		Key::KpPlus => common::hid::KeyCode::NumpadPlus,
+		Key::KpDivide => common::hid::KeyCode::NumpadDivide,
+		Key::KpMultiply => common::hid::KeyCode::NumpadMultiply,
+		Key::KpMinus => common::hid::KeyCode::NumpadSubtract,
+		Key::KpPlus => common::hid::KeyCode::NumpadAdd,
 		Key::KpEnter => common::hid::KeyCode::NumpadEnter,
 		Key::Kp1 => common::hid::KeyCode::Numpad1,
 		Key::Kp2 => common::hid::KeyCode::Numpad2,
@@ -1134,14 +1176,14 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 		Key::KpPeriod => common::hid::KeyCode::NumpadPeriod,
 		// Key::KpEquals => common::hid::KeyCode::KpEquals,
 		// Key::KpComma => common::hid::KeyCode::KpComma,
-		Key::LCtrl => common::hid::KeyCode::ControlLeft,
-		Key::LShift => common::hid::KeyCode::ShiftLeft,
-		Key::LAlt => common::hid::KeyCode::AltLeft,
-		Key::LGui => common::hid::KeyCode::WindowsLeft,
-		Key::RCtrl => common::hid::KeyCode::ControlRight,
-		Key::RShift => common::hid::KeyCode::ShiftRight,
-		Key::RAlt => common::hid::KeyCode::AltRight,
-		Key::RGui => common::hid::KeyCode::WindowsRight,
+		Key::LCtrl => common::hid::KeyCode::LControl,
+		Key::LShift => common::hid::KeyCode::LShift,
+		Key::LAlt => common::hid::KeyCode::LAlt,
+		Key::LGui => common::hid::KeyCode::LWin,
+		Key::RCtrl => common::hid::KeyCode::RControl,
+		Key::RShift => common::hid::KeyCode::RShift,
+		Key::RAlt => common::hid::KeyCode::RAltGr,
+		Key::RGui => common::hid::KeyCode::RWin,
 		_ => common::hid::KeyCode::X,
 	}
 }
@@ -1214,7 +1256,7 @@ unsafe extern "C" fn video_set_whole_palette(
 
 extern "C" fn i2c_bus_get_info(_i2c_bus: u8) -> common::Option<common::i2c::BusInfo> {
 	debug!("i2c_bus_get_info");
-	unimplemented!();
+	common::Option::None
 }
 
 extern "C" fn i2c_write_read(
@@ -1225,69 +1267,68 @@ extern "C" fn i2c_write_read(
 	_rx: common::ApiBuffer,
 ) -> common::Result<()> {
 	debug!("i2c_write_read");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_mixer_channel_get_info(
 	_audio_mixer_id: u8,
-) -> common::Result<common::audio::MixerChannelInfo> {
+) -> common::Option<common::audio::MixerChannelInfo> {
 	debug!("audio_mixer_channel_get_info");
-	unimplemented!();
+	common::Option::None
 }
 
 extern "C" fn audio_mixer_channel_set_level(_audio_mixer_id: u8, _level: u8) -> common::Result<()> {
 	debug!("audio_mixer_channel_set_level");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_output_set_config(_config: common::audio::Config) -> common::Result<()> {
 	debug!("audio_output_set_config");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_output_get_config() -> common::Result<common::audio::Config> {
 	debug!("audio_output_get_config");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 unsafe extern "C" fn audio_output_data(_samples: common::ApiByteSlice) -> common::Result<usize> {
 	debug!("audio_output_data");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_output_get_space() -> common::Result<usize> {
 	debug!("audio_output_get_space");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_input_set_config(_config: common::audio::Config) -> common::Result<()> {
 	debug!("audio_input_set_config");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_input_get_config() -> common::Result<common::audio::Config> {
 	debug!("audio_input_get_config");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_input_data(_samples: common::ApiBuffer) -> common::Result<usize> {
 	debug!("audio_input_data");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_input_get_count() -> common::Result<usize> {
 	debug!("audio_input_get_count");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn bus_select(_periperal_id: common::Option<u8>) {
 	debug!("bus_select");
-	unimplemented!();
 }
 
 extern "C" fn bus_get_info(_periperal_id: u8) -> common::Option<common::bus::PeripheralInfo> {
 	debug!("bus_get_info");
-	unimplemented!();
+	common::Option::None
 }
 
 extern "C" fn bus_write_read(
@@ -1296,12 +1337,12 @@ extern "C" fn bus_write_read(
 	_rx: common::ApiBuffer,
 ) -> common::Result<()> {
 	debug!("bus_write_read");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn bus_exchange(_buffer: common::ApiBuffer) -> common::Result<()> {
 	debug!("bus_exchange");
-	unimplemented!();
+	common::Result::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn time_ticks_get() -> common::Ticks {
@@ -1508,10 +1549,10 @@ impl AppState for MyApp {
 				let byte_offset = usize::from(cell_no) * 2;
 				let x = col * 8;
 				let y = row * font_height;
-				let glyph = unsafe { *FRAMEBUFFER.get_unchecked(byte_offset) };
-				let attr = unsafe { *FRAMEBUFFER.get_unchecked(byte_offset + 1) };
-				let fg_idx = (attr >> 3) & 0b1111;
-				let bg_idx = attr & 0b111;
+				let glyph = FRAMEBUFFER.get_at(byte_offset);
+				let attr = common::video::Attr(FRAMEBUFFER.get_at(byte_offset + 1));
+				let fg_idx = attr.fg().as_u8();
+				let bg_idx = attr.bg().as_u8();
 				let bg =
 					RGBColour::from_packed(PALETTE[usize::from(bg_idx)].load(Ordering::SeqCst));
 				let glyph_box = rect!(i32::from(x), i32::from(y), 8i32, font_height as i32,);
