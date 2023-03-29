@@ -55,6 +55,11 @@ enum AppEvent {
 	KeyDown(Key),
 }
 
+/// Our video RAM
+struct Framebuffer<const N: usize> {
+	contents: std::cell::UnsafeCell<[u8; N]>,
+}
+
 // ===========================================================================
 // Global Variables
 // ===========================================================================
@@ -64,46 +69,6 @@ enum AppEvent {
 /// Big enough for 640x480 @ 256 colour.
 // static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
 static FRAMEBUFFER: Framebuffer<{ 640 * 480 }> = Framebuffer::new();
-
-struct Framebuffer<const N: usize> {
-	contents: std::cell::UnsafeCell<[u8; N]>,
-}
-
-impl<const N: usize> Framebuffer<N> {
-	const fn new() -> Framebuffer<N> {
-		Framebuffer {
-			contents: std::cell::UnsafeCell::new([0u8; N]),
-		}
-	}
-
-	fn write_at(&self, offset: usize, value: u8) {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer write");
-		}
-		unsafe {
-			let array_ptr = self.contents.get() as *mut u8;
-			let byte_ptr = array_ptr.add(offset);
-			byte_ptr.write_volatile(value);
-		}
-	}
-
-	fn get_at(&self, offset: usize) -> u8 {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer read");
-		}
-		unsafe {
-			let array_ptr = self.contents.get() as *const u8;
-			let byte_ptr = array_ptr.add(offset);
-			byte_ptr.read_volatile()
-		}
-	}
-
-	fn get_pointer(&self) -> *mut u8 {
-		self.contents.get() as *mut u8
-	}
-}
-
-unsafe impl<const N: usize> Sync for Framebuffer<N> {}
 
 /// Scale the display to make it readable on a modern monitor
 const SCALE_FACTOR: f32 = 2.0;
@@ -1566,6 +1531,56 @@ impl AppState for MyApp {
 		Ok(())
 	}
 }
+
+impl<const N: usize> Framebuffer<N> {
+	/// Create a new blank Framebuffer.
+	/// 
+	/// Everything is zero initialised.
+	const fn new() -> Framebuffer<N> {
+		Framebuffer {
+			contents: std::cell::UnsafeCell::new([0u8; N]),
+		}
+	}
+
+	/// Set a byte in the framebuffer.
+	/// 
+	/// Panics if you try and write out of bounds.
+	/// 
+	/// Uses volatile writes.
+	fn write_at(&self, offset: usize, value: u8) {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer write");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *mut u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.write_volatile(value);
+		}
+	}
+
+	/// Get a byte from the framebuffer.
+	/// 
+	/// Panics if you try and read out of bounds.
+	/// 
+	/// Uses volatile reads.
+	fn get_at(&self, offset: usize) -> u8 {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer read");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *const u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.read_volatile()
+		}
+	}
+
+	/// Get a pointer to the framebuffer you can give to the OS.
+	fn get_pointer(&self) -> *mut u8 {
+		self.contents.get() as *mut u8
+	}
+}
+
+unsafe impl<const N: usize> Sync for Framebuffer<N> {}
 
 // ===========================================================================
 // End of File
