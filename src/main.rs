@@ -27,8 +27,10 @@
 // Imports
 // ===========================================================================
 
+use std::io::prelude::*;
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 
+use clap::Parser;
 use common::video::RGBColour;
 use log::{debug, info};
 use pix_engine::prelude::*;
@@ -55,9 +57,37 @@ enum AppEvent {
 	KeyDown(Key),
 }
 
+/// Our video RAM
+struct Framebuffer<const N: usize> {
+	contents: std::cell::UnsafeCell<[u8; N]>,
+}
+
+/// A Desktop GUI version of a Neotron BIOS
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+	/// Path to the OS library
+	#[arg(long)]
+	os: std::path::PathBuf,
+	/// Path to a file to use as a disk image
+	#[arg(long)]
+	disk: Option<std::path::PathBuf>,
+}
+
+/// All our emulated hardware
+struct Hardware {
+	/// When we booted up
+	boot_time: std::time::Instant,
+	/// Our disk image
+	disk_file: Option<std::fs::File>,
+}
+
 // ===========================================================================
 // Global Variables
 // ===========================================================================
+
+/// We only have 'normal' sectored emulated disks
+const BLOCK_SIZE: usize = 512;
 
 /// The VRAM we share in a very hazardous way with the OS.
 ///
@@ -65,51 +95,11 @@ enum AppEvent {
 // static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
 static FRAMEBUFFER: Framebuffer<{ 640 * 480 }> = Framebuffer::new();
 
-struct Framebuffer<const N: usize> {
-	contents: std::cell::UnsafeCell<[u8; N]>,
-}
-
-impl<const N: usize> Framebuffer<N> {
-	const fn new() -> Framebuffer<N> {
-		Framebuffer {
-			contents: std::cell::UnsafeCell::new([0u8; N]),
-		}
-	}
-
-	fn write_at(&self, offset: usize, value: u8) {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer write");
-		}
-		unsafe {
-			let array_ptr = self.contents.get() as *mut u8;
-			let byte_ptr = array_ptr.add(offset);
-			byte_ptr.write_volatile(value);
-		}
-	}
-
-	fn get_at(&self, offset: usize) -> u8 {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer read");
-		}
-		unsafe {
-			let array_ptr = self.contents.get() as *const u8;
-			let byte_ptr = array_ptr.add(offset);
-			byte_ptr.read_volatile()
-		}
-	}
-
-	fn get_pointer(&self) -> *mut u8 {
-		self.contents.get() as *mut u8
-	}
-}
-
-unsafe impl<const N: usize> Sync for Framebuffer<N> {}
-
 /// Scale the display to make it readable on a modern monitor
 const SCALE_FACTOR: f32 = 2.0;
 
 /// When we booted up
-static BOOT_TIME: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+static HARDWARE: std::sync::Mutex<Option<Hardware>> = std::sync::Mutex::new(None);
 
 /// The functions we export to the OS
 static BIOS_API: common::Api = common::Api {
@@ -702,10 +692,20 @@ static EV_QUEUE: std::sync::Mutex<Option<std::sync::mpsc::Receiver<AppEvent>>> =
 fn main() {
 	env_logger::init();
 
+	let args = Args::parse();
+
 	// Let's go!
 	info!("Netron Desktop BIOS");
 
-	*BOOT_TIME.lock().unwrap() = Some(std::time::Instant::now());
+	{
+		let mut hw = HARDWARE.lock().unwrap();
+		*hw = Some(Hardware {
+			boot_time: std::time::Instant::now(),
+			disk_file: args
+				.disk
+				.map(|path| std::fs::File::open(path).expect("open disk file")),
+		});
+	}
 
 	let white_on_black = common::video::Attr::new(
 		common::video::TextForegroundColour::WHITE,
@@ -720,14 +720,9 @@ fn main() {
 	}
 
 	// Process args
-	let mut lib = None;
-	for arg in std::env::args() {
-		if let Some(os_path) = arg.strip_prefix("--os=") {
-			info!("Loading OS from {:?}", os_path);
-			lib = unsafe { Some(libloading::Library::new(os_path).expect("library to load")) };
-			println!("Loaded!");
-		}
-	}
+	info!("Loading OS from {}", args.os.display());
+	let lib = unsafe { libloading::Library::new(args.os).expect("library to load") };
+	println!("Loaded!");
 
 	// Make a window
 	let mut engine = PixEngine::builder()
@@ -748,7 +743,6 @@ fn main() {
 	EV_QUEUE.lock().unwrap().replace(receiver);
 
 	// Run the OS
-	let lib = lib.unwrap();
 	std::thread::spawn(move || unsafe {
 		// Wait for Started message
 		let queue = EV_QUEUE.lock().unwrap();
@@ -1346,7 +1340,9 @@ extern "C" fn bus_exchange(_buffer: common::ApiBuffer) -> common::Result<()> {
 }
 
 extern "C" fn time_ticks_get() -> common::Ticks {
-	let boot_time = BOOT_TIME.lock().unwrap().unwrap();
+	let mut hw_guard = HARDWARE.lock().unwrap();
+	let hw = hw_guard.as_mut().unwrap();
+	let boot_time = hw.boot_time;
 	let difference = boot_time.elapsed();
 	debug!("time_ticks_get() -> {}", difference.as_millis());
 	common::Ticks(difference.as_millis() as u64)
@@ -1365,7 +1361,25 @@ extern "C" fn bus_interrupt_status() -> u32 {
 
 extern "C" fn block_dev_get_info(dev_id: u8) -> common::Option<common::block_dev::DeviceInfo> {
 	debug!("block_dev_get_info(dev_id: {})", dev_id);
-	common::Option::None
+	let mut hw_guard = HARDWARE.lock().unwrap();
+	let hw = hw_guard.as_mut().unwrap();
+	if dev_id == 0 {
+		match &mut hw.disk_file {
+			Some(file) => common::Option::Some(common::block_dev::DeviceInfo {
+				name: common::ApiString::new("File0"),
+				device_type: common::block_dev::DeviceType::HardDiskDrive,
+				block_size: BLOCK_SIZE as u32,
+				num_blocks: file.metadata().unwrap().len() / (BLOCK_SIZE as u64),
+				ejectable: false,
+				removable: false,
+				media_present: true,
+				read_only: false,
+			}),
+			None => common::Option::None,
+		}
+	} else {
+		common::Option::None
+	}
 }
 
 extern "C" fn block_dev_eject(dev_id: u8) -> common::Result<()> {
@@ -1383,20 +1397,66 @@ extern "C" fn block_write(
 		"block_write(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
 	);
-	common::Result::Ok(())
+	let mut hw_guard = HARDWARE.lock().unwrap();
+	let hw = hw_guard.as_mut().unwrap();
+	if dev_id == 0 {
+		match &mut hw.disk_file {
+			Some(file) => {
+				if file
+					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
+					.is_err()
+				{
+					return common::Result::Err(common::Error::BlockOutOfBounds);
+				}
+				let buffer_slice = &buffer.as_slice()[0..usize::from(num_blocks) * BLOCK_SIZE];
+				if let Err(e) = file.write_all(buffer_slice) {
+					log::warn!("Failed to write to disk image: {:?}", e);
+					return common::Result::Err(common::Error::DeviceError(0));
+				}
+				common::Result::Ok(())
+			}
+			None => common::Result::Err(common::Error::DeviceError(0)),
+		}
+	} else {
+		common::Result::Err(common::Error::InvalidDevice)
+	}
 }
 
 extern "C" fn block_read(
 	dev_id: u8,
 	block_idx: common::block_dev::BlockIdx,
 	num_blocks: u8,
-	buffer: common::ApiBuffer,
+	mut buffer: common::ApiBuffer,
 ) -> common::Result<()> {
 	debug!(
 		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
 	);
-	common::Result::Ok(())
+	let mut hw_guard = HARDWARE.lock().unwrap();
+	let hw = hw_guard.as_mut().unwrap();
+	if dev_id == 0 {
+		match &mut hw.disk_file {
+			Some(file) => {
+				if file
+					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
+					.is_err()
+				{
+					return common::Result::Err(common::Error::BlockOutOfBounds);
+				}
+				if let Some(buffer_slice) = buffer.as_mut_slice() {
+					let buffer_slice = &mut buffer_slice[0..usize::from(num_blocks) * BLOCK_SIZE];
+					if let Err(e) = file.read_exact(buffer_slice) {
+						log::warn!("Failed to read from disk image: {:?}", e);
+						return common::Result::Err(common::Error::DeviceError(0));
+					}
+				}
+				common::Result::Ok(())
+			}
+			None => common::Result::Err(common::Error::DeviceError(0)),
+		}
+	} else {
+		common::Result::Err(common::Error::InvalidDevice)
+	}
 }
 
 extern "C" fn block_verify(
@@ -1409,7 +1469,34 @@ extern "C" fn block_verify(
 		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
 	);
-	common::Result::Ok(())
+	let mut hw_guard = HARDWARE.lock().unwrap();
+	let hw = hw_guard.as_mut().unwrap();
+	if dev_id == 0 {
+		match &mut hw.disk_file {
+			Some(file) => {
+				if file
+					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
+					.is_err()
+				{
+					return common::Result::Err(common::Error::BlockOutOfBounds);
+				}
+				let buffer_slice = &buffer.as_slice()[0..usize::from(num_blocks) * BLOCK_SIZE];
+				let mut read_buffer = vec![0u8; buffer_slice.len()];
+				if let Err(e) = file.read_exact(&mut read_buffer) {
+					log::warn!("Failed to write to disk image: {:?}", e);
+					return common::Result::Err(common::Error::DeviceError(0));
+				}
+				if read_buffer.as_slice() == buffer_slice {
+					common::Result::Ok(())
+				} else {
+					common::Result::Err(common::Error::DeviceError(1))
+				}
+			}
+			None => common::Result::Err(common::Error::DeviceError(0)),
+		}
+	} else {
+		common::Result::Err(common::Error::InvalidDevice)
+	}
 }
 
 extern "C" fn power_idle() {
@@ -1566,6 +1653,56 @@ impl AppState for MyApp {
 		Ok(())
 	}
 }
+
+impl<const N: usize> Framebuffer<N> {
+	/// Create a new blank Framebuffer.
+	///
+	/// Everything is zero initialised.
+	const fn new() -> Framebuffer<N> {
+		Framebuffer {
+			contents: std::cell::UnsafeCell::new([0u8; N]),
+		}
+	}
+
+	/// Set a byte in the framebuffer.
+	///
+	/// Panics if you try and write out of bounds.
+	///
+	/// Uses volatile writes.
+	fn write_at(&self, offset: usize, value: u8) {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer write");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *mut u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.write_volatile(value);
+		}
+	}
+
+	/// Get a byte from the framebuffer.
+	///
+	/// Panics if you try and read out of bounds.
+	///
+	/// Uses volatile reads.
+	fn get_at(&self, offset: usize) -> u8 {
+		if offset > std::mem::size_of_val(&self.contents) {
+			panic!("Out of bounds framebuffer read");
+		}
+		unsafe {
+			let array_ptr = self.contents.get() as *const u8;
+			let byte_ptr = array_ptr.add(offset);
+			byte_ptr.read_volatile()
+		}
+	}
+
+	/// Get a pointer to the framebuffer you can give to the OS.
+	fn get_pointer(&self) -> *mut u8 {
+		self.contents.get() as *mut u8
+	}
+}
+
+unsafe impl<const N: usize> Sync for Framebuffer<N> {}
 
 // ===========================================================================
 // End of File
