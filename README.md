@@ -21,7 +21,7 @@ $ export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
 
 You will need to re-run the `export` command before you re-build the application.
 
-## Building
+## Building on Linux
 
 Build and run this BIOS (and use it to boot Neotron OS) with...
 
@@ -43,6 +43,23 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 ./target/release/libneotron_os.so
 ~/neotron-os $ cp ./target/release/libneotron_os.so ~/Neotron-Desktop-BIOS
 ```
+
+## Building on Windows
+
+1. Install and bootstrap [vcpkg](https://github.com/microsoft/vcpkg)
+2. Install the SDL2 libraries with vcpkg:
+
+  ```console
+  C:\Users\user\Documents\vcpkg> ./vcpkg.exe install sdl2-ttf:x64-windows sdl2:x64-windows sdl2-mixer:x64-windows sdl2-gfx:x64-windows sdl2-ttf:x64-windows sdl2-image:x64-windows
+  ```
+
+3. Set your PATH, INCLUDE and LIB to include the directories in your vcpkg install folder:
+
+  ```console
+  C:\Users\user\Documents> set PATH=%PATH%;C:\Users\user\Documents\vcpkg\installed\x64-windows\bin
+  C:\Users\user\Documents> set INCLUDE=%INCLUDE%;C:\Users\user\Documents\vcpkg\installed\x64-windows\include
+  C:\Users\user\Documents> set LIB=%LIB%;C:\Users\user\Documents\vcpkg\installed\x64-windows\lib
+  ```
 
 ## Features
 
