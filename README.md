@@ -13,10 +13,10 @@ This BIOS uses [pix-engine](https://crates.io/crates/pix-engine), so should run 
 If you have a Mac, run:
 
 ```console
-$ brew install sdl2
-$ brew install sdl2_mixer
-$ brew install sdl2_image
-$ export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib" 
+brew install sdl2
+brew install sdl2_mixer
+brew install sdl2_image
+export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib" 
 ```
 
 You will need to re-run the `export` command before you re-build the application.
@@ -49,17 +49,17 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 1. Install and bootstrap [vcpkg](https://github.com/microsoft/vcpkg)
 2. Install the SDL2 libraries with vcpkg:
 
-  ```console
-  C:\Users\user\Documents\vcpkg> ./vcpkg.exe install sdl2-ttf:x64-windows sdl2:x64-windows sdl2-mixer:x64-windows sdl2-gfx:x64-windows sdl2-ttf:x64-windows sdl2-image:x64-windows
-  ```
+   ```console
+   C:\Users\user\Documents\vcpkg> ./vcpkg.exe install sdl2-ttf:x64-windows sdl2:x64-windows sdl2-mixer:x64-windows sdl2-gfx:x64-windows sdl2-ttf:x64-windows sdl2-image:x64-windows
+   ```
 
 3. Set your PATH, INCLUDE and LIB to include the directories in your vcpkg install folder:
 
-  ```console
-  C:\Users\user\Documents> set PATH=%PATH%;C:\Users\user\Documents\vcpkg\installed\x64-windows\bin
-  C:\Users\user\Documents> set INCLUDE=%INCLUDE%;C:\Users\user\Documents\vcpkg\installed\x64-windows\include
-  C:\Users\user\Documents> set LIB=%LIB%;C:\Users\user\Documents\vcpkg\installed\x64-windows\lib
-  ```
+   ```console
+   C:\Users\user\Documents> set PATH=%PATH%;C:\Users\user\Documents\vcpkg\installed\x64-windows\bin
+   C:\Users\user\Documents> set INCLUDE=%INCLUDE%;C:\Users\user\Documents\vcpkg\installed\x64-windows\include
+   C:\Users\user\Documents> set LIB=%LIB%;C:\Users\user\Documents\vcpkg\installed\x64-windows\lib
+   ```
 
 ## Features
 
@@ -77,20 +77,22 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 
 ## Licence
 
-	Neotron-Desktop-BIOS Copyright (c) Jonathan 'theJPster' Pallant, 2022
+```code
+Neotron-Desktop-BIOS Copyright (c) Jonathan 'theJPster' Pallant, 2023
 
-	This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+```
 
 ## Contribution
 

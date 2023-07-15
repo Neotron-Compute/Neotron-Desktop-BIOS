@@ -1567,7 +1567,7 @@ impl MyApp {
 	}
 }
 
-impl PixEngine  for MyApp {
+impl PixEngine for MyApp {
 	/// Perform application initialisation.
 	fn on_start(&mut self, s: &mut PixState) -> PixResult<()> {
 		self.render_glyphs(s)?;
@@ -1602,9 +1602,7 @@ impl PixEngine  for MyApp {
 				self.sender.send(AppEvent::KeyDown(*key)).unwrap();
 				Ok(true)
 			}
-			_ => {
-				Ok(false)
-			}
+			_ => Ok(false),
 		}
 	}
 
