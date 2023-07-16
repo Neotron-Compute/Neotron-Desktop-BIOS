@@ -778,9 +778,9 @@ extern "C" fn api_version_get() -> common::Version {
 /// also pass the length (excluding the null) to make it easy to construct
 /// a Rust string. It is unspecified as to whether the string is located
 /// in Flash ROM or RAM (but it's likely to be Flash ROM).
-extern "C" fn bios_version_get() -> common::ApiString<'static> {
+extern "C" fn bios_version_get() -> common::FfiString<'static> {
 	debug!("bios_version_get()");
-	common::ApiString::new("Neotron Desktop BIOS\0")
+	common::FfiString::new("Neotron Desktop BIOS\0")
 }
 
 /// Get information about the Serial ports in the system.
@@ -795,14 +795,17 @@ extern "C" fn bios_version_get() -> common::ApiString<'static> {
 /// that is an Operating System level design feature. These APIs just
 /// reflect the raw hardware, in a similar manner to the registers exposed
 /// by a memory-mapped UART peripheral.
-extern "C" fn serial_get_info(_device: u8) -> common::Option<common::serial::DeviceInfo> {
+extern "C" fn serial_get_info(_device: u8) -> common::FfiOption<common::serial::DeviceInfo> {
 	debug!("serial_get_info()");
-	common::Option::None
+	common::FfiOption::None
 }
 
 /// Set the options for a given serial device. An error is returned if the
 /// options are invalid for that serial device.
-extern "C" fn serial_configure(_device: u8, _config: common::serial::Config) -> common::Result<()> {
+extern "C" fn serial_configure(
+	_device: u8,
+	_config: common::serial::Config,
+) -> common::ApiResult<()> {
 	debug!("serial_configure()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -814,9 +817,9 @@ extern "C" fn serial_configure(_device: u8, _config: common::serial::Config) -> 
 /// only the first `n` bytes were.
 extern "C" fn serial_write(
 	_device: u8,
-	_data: common::ApiByteSlice,
-	_timeout: common::Option<common::Timeout>,
-) -> common::Result<usize> {
+	_data: common::FfiByteSlice,
+	_timeout: common::FfiOption<common::Timeout>,
+) -> common::ApiResult<usize> {
 	debug!("serial_write()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -828,9 +831,9 @@ extern "C" fn serial_write(
 ///  first `n` bytes were filled in.
 extern "C" fn serial_read(
 	_device: u8,
-	_data: common::ApiBuffer,
-	_timeout: common::Option<common::Timeout>,
-) -> common::Result<usize> {
+	_data: common::FfiBuffer,
+	_timeout: common::FfiOption<common::Timeout>,
+) -> common::ApiResult<usize> {
 	debug!("serial_read()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -878,7 +881,7 @@ extern "C" fn time_clock_set(time: common::Time) {
 /// Configuration data is, to the BIOS, just a block of bytes of a given
 /// length. How it stores them is up to the BIOS - it could be EEPROM, or
 /// battery-backed SRAM.
-extern "C" fn configuration_get(_buffer: common::ApiBuffer) -> common::Result<usize> {
+extern "C" fn configuration_get(_buffer: common::FfiBuffer) -> common::ApiResult<usize> {
 	debug!("configuration_get()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -886,7 +889,7 @@ extern "C" fn configuration_get(_buffer: common::ApiBuffer) -> common::Result<us
 /// Set the configuration data block.
 ///
 /// See `configuration_get`.
-extern "C" fn configuration_set(_buffer: common::ApiByteSlice) -> common::Result<()> {
+extern "C" fn configuration_set(_buffer: common::FfiByteSlice) -> common::ApiResult<()> {
 	debug!("configuration_set()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -909,7 +912,7 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 /// `video_get_framebuffer` will return `null`. You must then supply a
 /// pointer to a block of size `Mode::frame_size_bytes()` to
 /// `video_set_framebuffer` before any video will appear.
-extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
+extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()> {
 	info!("video_set_mode({:?})", mode);
 	match mode.timing() {
 		common::video::Timing::T640x480 => {
@@ -919,7 +922,7 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
 			// OK
 		}
 		_ => {
-			return common::Result::Err(common::Error::UnsupportedConfiguration(
+			return common::ApiResult::Err(common::Error::UnsupportedConfiguration(
 				mode.as_u8() as u16
 			));
 		}
@@ -932,7 +935,7 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
 			// OK
 		}
 		_ => {
-			return common::Result::Err(common::Error::UnsupportedConfiguration(
+			return common::ApiResult::Err(common::Error::UnsupportedConfiguration(
 				mode.as_u8() as u16
 			));
 		}
@@ -941,7 +944,7 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
 	// We know this is a valid video mode because it was set with `video_set_mode`.
 	let mode_value = mode.as_u8();
 	VIDEO_MODE.store(mode_value, Ordering::SeqCst);
-	common::Result::Ok(())
+	common::ApiResult::Ok(())
 }
 
 /// Returns the video mode the BIOS is currently in.
@@ -986,7 +989,7 @@ extern "C" fn video_get_framebuffer() -> *mut u8 {
 ///
 /// The pointer must point to enough video memory to handle the current video
 /// mode, and any future video mode you set.
-unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::Result<()> {
+unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::ApiResult<()> {
 	Err(common::Error::Unimplemented).into()
 }
 
@@ -1016,7 +1019,7 @@ extern "C" fn video_mode_needs_vram(_mode: common::video::Mode) -> bool {
 /// (other than Region 0), so faster memory should be listed first.
 ///
 /// If the region number given is invalid, the function returns `(null, 0)`.
-extern "C" fn memory_get_region(region: u8) -> common::Option<common::MemoryRegion> {
+extern "C" fn memory_get_region(region: u8) -> common::FfiOption<common::MemoryRegion> {
 	static mut MEMORY_BLOCK: (*mut u8, usize) = (std::ptr::null_mut(), 0);
 	match region {
 		0 => {
@@ -1029,33 +1032,33 @@ extern "C" fn memory_get_region(region: u8) -> common::Option<common::MemoryRegi
 				}
 				std::mem::forget(data);
 			}
-			common::Option::Some(common::MemoryRegion {
+			common::FfiOption::Some(common::MemoryRegion {
 				start: unsafe { MEMORY_BLOCK.0 },
 				length: unsafe { MEMORY_BLOCK.1 },
 				kind: common::MemoryKind::Ram,
 			})
 		}
-		_ => common::Option::None,
+		_ => common::FfiOption::None,
 	}
 }
 
 /// Get the next available HID event, if any.
 ///
 /// This function doesn't block. It will return `Ok(None)` if there is no event ready.
-extern "C" fn hid_get_event() -> common::Result<common::Option<common::hid::HidEvent>> {
+extern "C" fn hid_get_event() -> common::ApiResult<common::FfiOption<common::hid::HidEvent>> {
 	let queue = EV_QUEUE.lock().unwrap();
 	match queue.as_ref().unwrap().try_recv() {
 		Ok(AppEvent::KeyUp(key)) => {
 			let code = common::hid::HidEvent::KeyRelease(convert_keycode(key));
 			debug!("hid_get_event() -> {:?}", code);
-			common::Result::Ok(common::Option::Some(code))
+			common::ApiResult::Ok(common::FfiOption::Some(code))
 		}
 		Ok(AppEvent::KeyDown(key)) => {
 			let code = common::hid::HidEvent::KeyPress(convert_keycode(key));
 			debug!("hid_get_event() -> {:?}", code);
-			common::Result::Ok(common::Option::Some(code))
+			common::ApiResult::Ok(common::FfiOption::Some(code))
 		}
-		_ => common::Result::Ok(common::Option::None),
+		_ => common::ApiResult::Ok(common::FfiOption::None),
 	}
 }
 
@@ -1189,7 +1192,7 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 }
 
 /// Control the keyboard LEDs.
-extern "C" fn hid_set_leds(_leds: common::hid::KeyboardLeds) -> common::Result<()> {
+extern "C" fn hid_set_leds(_leds: common::hid::KeyboardLeds) -> common::ApiResult<()> {
 	debug!("hid_set_leds()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -1225,14 +1228,14 @@ extern "C" fn video_wait_for_line(_line: u16) {
 	// TODO
 }
 
-extern "C" fn video_get_palette(index: u8) -> common::Option<common::video::RGBColour> {
+extern "C" fn video_get_palette(index: u8) -> common::FfiOption<common::video::RGBColour> {
 	debug!("video_get_palette({})", index);
 	let entry = PALETTE.get(usize::from(index));
 	let entry_value =
 		entry.map(|raw| common::video::RGBColour::from_packed(raw.load(Ordering::SeqCst)));
 	match entry_value {
-		Some(rgb) => common::Option::Some(rgb),
-		None => common::Option::None,
+		Some(rgb) => common::FfiOption::Some(rgb),
+		None => common::FfiOption::None,
 	}
 }
 
@@ -1254,95 +1257,98 @@ unsafe extern "C" fn video_set_whole_palette(
 	}
 }
 
-extern "C" fn i2c_bus_get_info(_i2c_bus: u8) -> common::Option<common::i2c::BusInfo> {
+extern "C" fn i2c_bus_get_info(_i2c_bus: u8) -> common::FfiOption<common::i2c::BusInfo> {
 	debug!("i2c_bus_get_info");
-	common::Option::None
+	common::FfiOption::None
 }
 
 extern "C" fn i2c_write_read(
 	_i2c_bus: u8,
 	_i2c_device_address: u8,
-	_tx: common::ApiByteSlice,
-	_tx2: common::ApiByteSlice,
-	_rx: common::ApiBuffer,
-) -> common::Result<()> {
+	_tx: common::FfiByteSlice,
+	_tx2: common::FfiByteSlice,
+	_rx: common::FfiBuffer,
+) -> common::ApiResult<()> {
 	debug!("i2c_write_read");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn audio_mixer_channel_get_info(
 	_audio_mixer_id: u8,
-) -> common::Option<common::audio::MixerChannelInfo> {
+) -> common::FfiOption<common::audio::MixerChannelInfo> {
 	debug!("audio_mixer_channel_get_info");
-	common::Option::None
+	common::FfiOption::None
 }
 
-extern "C" fn audio_mixer_channel_set_level(_audio_mixer_id: u8, _level: u8) -> common::Result<()> {
+extern "C" fn audio_mixer_channel_set_level(
+	_audio_mixer_id: u8,
+	_level: u8,
+) -> common::ApiResult<()> {
 	debug!("audio_mixer_channel_set_level");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_output_set_config(_config: common::audio::Config) -> common::Result<()> {
+extern "C" fn audio_output_set_config(_config: common::audio::Config) -> common::ApiResult<()> {
 	debug!("audio_output_set_config");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_output_get_config() -> common::Result<common::audio::Config> {
+extern "C" fn audio_output_get_config() -> common::ApiResult<common::audio::Config> {
 	debug!("audio_output_get_config");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-unsafe extern "C" fn audio_output_data(_samples: common::ApiByteSlice) -> common::Result<usize> {
+unsafe extern "C" fn audio_output_data(_samples: common::FfiByteSlice) -> common::ApiResult<usize> {
 	debug!("audio_output_data");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_output_get_space() -> common::Result<usize> {
+extern "C" fn audio_output_get_space() -> common::ApiResult<usize> {
 	debug!("audio_output_get_space");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_input_set_config(_config: common::audio::Config) -> common::Result<()> {
+extern "C" fn audio_input_set_config(_config: common::audio::Config) -> common::ApiResult<()> {
 	debug!("audio_input_set_config");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_input_get_config() -> common::Result<common::audio::Config> {
+extern "C" fn audio_input_get_config() -> common::ApiResult<common::audio::Config> {
 	debug!("audio_input_get_config");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_input_data(_samples: common::ApiBuffer) -> common::Result<usize> {
+extern "C" fn audio_input_data(_samples: common::FfiBuffer) -> common::ApiResult<usize> {
 	debug!("audio_input_data");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn audio_input_get_count() -> common::Result<usize> {
+extern "C" fn audio_input_get_count() -> common::ApiResult<usize> {
 	debug!("audio_input_get_count");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn bus_select(_periperal_id: common::Option<u8>) {
+extern "C" fn bus_select(_periperal_id: common::FfiOption<u8>) {
 	debug!("bus_select");
 }
 
-extern "C" fn bus_get_info(_periperal_id: u8) -> common::Option<common::bus::PeripheralInfo> {
+extern "C" fn bus_get_info(_periperal_id: u8) -> common::FfiOption<common::bus::PeripheralInfo> {
 	debug!("bus_get_info");
-	common::Option::None
+	common::FfiOption::None
 }
 
 extern "C" fn bus_write_read(
-	_tx: common::ApiByteSlice,
-	_tx2: common::ApiByteSlice,
-	_rx: common::ApiBuffer,
-) -> common::Result<()> {
+	_tx: common::FfiByteSlice,
+	_tx2: common::FfiByteSlice,
+	_rx: common::FfiBuffer,
+) -> common::ApiResult<()> {
 	debug!("bus_write_read");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
-extern "C" fn bus_exchange(_buffer: common::ApiBuffer) -> common::Result<()> {
+extern "C" fn bus_exchange(_buffer: common::FfiBuffer) -> common::ApiResult<()> {
 	debug!("bus_exchange");
-	common::Result::Err(common::Error::Unimplemented)
+	common::ApiResult::Err(common::Error::Unimplemented)
 }
 
 extern "C" fn time_ticks_get() -> common::Ticks {
@@ -1365,14 +1371,14 @@ extern "C" fn bus_interrupt_status() -> u32 {
 	0
 }
 
-extern "C" fn block_dev_get_info(dev_id: u8) -> common::Option<common::block_dev::DeviceInfo> {
+extern "C" fn block_dev_get_info(dev_id: u8) -> common::FfiOption<common::block_dev::DeviceInfo> {
 	debug!("block_dev_get_info(dev_id: {})", dev_id);
 	let mut hw_guard = HARDWARE.lock().unwrap();
 	let hw = hw_guard.as_mut().unwrap();
 	if dev_id == 0 {
 		match &mut hw.disk_file {
-			Some(file) => common::Option::Some(common::block_dev::DeviceInfo {
-				name: common::ApiString::new("File0"),
+			Some(file) => common::FfiOption::Some(common::block_dev::DeviceInfo {
+				name: common::FfiString::new("File0"),
 				device_type: common::block_dev::DeviceType::HardDiskDrive,
 				block_size: BLOCK_SIZE as u32,
 				num_blocks: file.metadata().unwrap().len() / (BLOCK_SIZE as u64),
@@ -1381,24 +1387,24 @@ extern "C" fn block_dev_get_info(dev_id: u8) -> common::Option<common::block_dev
 				media_present: true,
 				read_only: false,
 			}),
-			None => common::Option::None,
+			None => common::FfiOption::None,
 		}
 	} else {
-		common::Option::None
+		common::FfiOption::None
 	}
 }
 
-extern "C" fn block_dev_eject(dev_id: u8) -> common::Result<()> {
+extern "C" fn block_dev_eject(dev_id: u8) -> common::ApiResult<()> {
 	debug!("block_dev_eject(dev_id: {})", dev_id);
-	common::Result::Ok(())
+	common::ApiResult::Ok(())
 }
 
 extern "C" fn block_write(
 	dev_id: u8,
 	block_idx: common::block_dev::BlockIdx,
 	num_blocks: u8,
-	buffer: common::ApiByteSlice,
-) -> common::Result<()> {
+	buffer: common::FfiByteSlice,
+) -> common::ApiResult<()> {
 	debug!(
 		"block_write(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
@@ -1412,19 +1418,19 @@ extern "C" fn block_write(
 					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
 					.is_err()
 				{
-					return common::Result::Err(common::Error::BlockOutOfBounds);
+					return common::ApiResult::Err(common::Error::BlockOutOfBounds);
 				}
 				let buffer_slice = &buffer.as_slice()[0..usize::from(num_blocks) * BLOCK_SIZE];
 				if let Err(e) = file.write_all(buffer_slice) {
 					log::warn!("Failed to write to disk image: {:?}", e);
-					return common::Result::Err(common::Error::DeviceError(0));
+					return common::ApiResult::Err(common::Error::DeviceError(0));
 				}
-				common::Result::Ok(())
+				common::ApiResult::Ok(())
 			}
-			None => common::Result::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError(0)),
 		}
 	} else {
-		common::Result::Err(common::Error::InvalidDevice)
+		common::ApiResult::Err(common::Error::InvalidDevice)
 	}
 }
 
@@ -1432,8 +1438,8 @@ extern "C" fn block_read(
 	dev_id: u8,
 	block_idx: common::block_dev::BlockIdx,
 	num_blocks: u8,
-	mut buffer: common::ApiBuffer,
-) -> common::Result<()> {
+	mut buffer: common::FfiBuffer,
+) -> common::ApiResult<()> {
 	debug!(
 		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
@@ -1447,21 +1453,21 @@ extern "C" fn block_read(
 					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
 					.is_err()
 				{
-					return common::Result::Err(common::Error::BlockOutOfBounds);
+					return common::ApiResult::Err(common::Error::BlockOutOfBounds);
 				}
 				if let Some(buffer_slice) = buffer.as_mut_slice() {
 					let buffer_slice = &mut buffer_slice[0..usize::from(num_blocks) * BLOCK_SIZE];
 					if let Err(e) = file.read_exact(buffer_slice) {
 						log::warn!("Failed to read from disk image: {:?}", e);
-						return common::Result::Err(common::Error::DeviceError(0));
+						return common::ApiResult::Err(common::Error::DeviceError(0));
 					}
 				}
-				common::Result::Ok(())
+				common::ApiResult::Ok(())
 			}
-			None => common::Result::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError(0)),
 		}
 	} else {
-		common::Result::Err(common::Error::InvalidDevice)
+		common::ApiResult::Err(common::Error::InvalidDevice)
 	}
 }
 
@@ -1469,8 +1475,8 @@ extern "C" fn block_verify(
 	dev_id: u8,
 	block_idx: common::block_dev::BlockIdx,
 	num_blocks: u8,
-	buffer: common::ApiByteSlice,
-) -> common::Result<()> {
+	buffer: common::FfiByteSlice,
+) -> common::ApiResult<()> {
 	debug!(
 		"block_read(dev_id: {}, block_id: {}, num_blocks: {}, buffer_len: {})",
 		dev_id, block_idx.0, num_blocks, buffer.data_len
@@ -1484,24 +1490,24 @@ extern "C" fn block_verify(
 					.seek(std::io::SeekFrom::Start(block_idx.0 * BLOCK_SIZE as u64))
 					.is_err()
 				{
-					return common::Result::Err(common::Error::BlockOutOfBounds);
+					return common::ApiResult::Err(common::Error::BlockOutOfBounds);
 				}
 				let buffer_slice = &buffer.as_slice()[0..usize::from(num_blocks) * BLOCK_SIZE];
 				let mut read_buffer = vec![0u8; buffer_slice.len()];
 				if let Err(e) = file.read_exact(&mut read_buffer) {
 					log::warn!("Failed to write to disk image: {:?}", e);
-					return common::Result::Err(common::Error::DeviceError(0));
+					return common::ApiResult::Err(common::Error::DeviceError(0));
 				}
 				if read_buffer.as_slice() == buffer_slice {
-					common::Result::Ok(())
+					common::ApiResult::Ok(())
 				} else {
-					common::Result::Err(common::Error::DeviceError(1))
+					common::ApiResult::Err(common::Error::DeviceError(1))
 				}
 			}
-			None => common::Result::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError(0)),
 		}
 	} else {
-		common::Result::Err(common::Error::InvalidDevice)
+		common::ApiResult::Err(common::Error::InvalidDevice)
 	}
 }
 

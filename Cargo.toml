@@ -1,18 +1,17 @@
 [package]
-name = "neotron-desktop-bios"
-version = "0.1.0"
-edition = "2021"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
-readme = "README.md"
+edition = "2021"
 license-file = "LICENSE"
+name = "neotron-desktop-bios"
+readme = "README.md"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-neotron-common-bios = "0.8"
-libloading = "0.7"
-pix-engine = "0.7"
+clap = {version = "4.2", features = ["derive"]}
 env_logger = "0.9"
+libloading = "0.7"
 log = "0.4"
-clap = { version="4.2", features=["derive"] }
-
+neotron-common-bios = "0.10"
+pix-engine = "0.7"
