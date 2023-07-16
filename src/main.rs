@@ -720,21 +720,27 @@ fn main() {
 	}
 
 	// Process args
-	info!("Loading OS from {}", args.os.display());
-	let lib = unsafe { libloading::Library::new(args.os).expect("library to load") };
-	println!("Loaded!");
+	let mut lib = None;
+	for arg in std::env::args() {
+		if let Some(os_path) = arg.strip_prefix("--os=") {
+			info!("Loading OS from {:?}", os_path);
+			lib = unsafe { Some(libloading::Library::new(os_path).expect("library to load")) };
+			println!("Loaded!");
+		}
+	}
+	let lib = lib.expect("Fetching --os=filename from args");
 
 	// Make a window
-	let mut engine = PixEngine::builder()
-		.with_dimensions(100, 100)
-		.with_title("Neotron Desktop BIOS")
-		.with_frame_rate()
+	let mut engine = Engine::builder()
+		.dimensions(640, 480)
+		.title("Neotron Desktop BIOS")
+		.show_frame_rate()
 		.target_frame_rate(60)
 		.build()
 		.unwrap();
 	let (sender, receiver) = std::sync::mpsc::channel();
 	let mut app = MyApp {
-		mode: unsafe { common::video::Mode::from_u8(0xFF) },
+		mode: unsafe { common::video::Mode::from_u8(0) },
 		font8x16: Vec::new(),
 		font8x8: Vec::new(),
 		sender,
@@ -751,7 +757,7 @@ fn main() {
 		drop(queue);
 		info!("Video init complete. OS starting...");
 		let main_func: libloading::Symbol<unsafe extern "C" fn(api: &'static common::Api) -> !> =
-			lib.get(b"main").expect("main() found");
+			lib.get(b"os_main").expect("os_main() not found");
 		main_func(&BIOS_API);
 	});
 
@@ -798,7 +804,7 @@ extern "C" fn serial_get_info(_device: u8) -> common::Option<common::serial::Dev
 /// options are invalid for that serial device.
 extern "C" fn serial_configure(_device: u8, _config: common::serial::Config) -> common::Result<()> {
 	debug!("serial_configure()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Write bytes to a serial port. There is no sense of 'opening' or
@@ -812,7 +818,7 @@ extern "C" fn serial_write(
 	_timeout: common::Option<common::Timeout>,
 ) -> common::Result<usize> {
 	debug!("serial_write()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Read bytes from a serial port. There is no sense of 'opening' or
@@ -826,7 +832,7 @@ extern "C" fn serial_read(
 	_timeout: common::Option<common::Timeout>,
 ) -> common::Result<usize> {
 	debug!("serial_read()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Get the current wall time.
@@ -874,7 +880,7 @@ extern "C" fn time_clock_set(time: common::Time) {
 /// battery-backed SRAM.
 extern "C" fn configuration_get(_buffer: common::ApiBuffer) -> common::Result<usize> {
 	debug!("configuration_get()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Set the configuration data block.
@@ -882,7 +888,7 @@ extern "C" fn configuration_get(_buffer: common::ApiBuffer) -> common::Result<us
 /// See `configuration_get`.
 extern "C" fn configuration_set(_buffer: common::ApiByteSlice) -> common::Result<()> {
 	debug!("configuration_set()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Does this Neotron BIOS support this video mode?
@@ -904,7 +910,7 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 /// pointer to a block of size `Mode::frame_size_bytes()` to
 /// `video_set_framebuffer` before any video will appear.
 extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
-	debug!("video_set_mode({:?})", mode);
+	info!("video_set_mode({:?})", mode);
 	match mode.timing() {
 		common::video::Timing::T640x480 => {
 			// OK
@@ -981,7 +987,7 @@ extern "C" fn video_get_framebuffer() -> *mut u8 {
 /// The pointer must point to enough video memory to handle the current video
 /// mode, and any future video mode you set.
 unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::Result<()> {
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Find out whether the given video mode needs more VRAM than we currently have.
@@ -1185,7 +1191,7 @@ fn convert_keycode(key: Key) -> common::hid::KeyCode {
 /// Control the keyboard LEDs.
 extern "C" fn hid_set_leds(_leds: common::hid::KeyboardLeds) -> common::Result<()> {
 	debug!("hid_set_leds()");
-	common::Result::Err(common::Error::Unimplemented)
+	Err(common::Error::Unimplemented).into()
 }
 
 /// Wait for the next occurence of the specified video scan-line.
@@ -1523,6 +1529,7 @@ impl MyApp {
 		for glyph in 0..=255 {
 			for palette_entry in PALETTE.iter().take(Self::NUM_FG) {
 				let fg = RGBColour::from_packed(palette_entry.load(Ordering::Relaxed));
+				info!("Drawing {glyph} in {:06x}", fg.as_packed());
 				let texture_id = if texture_buffer.len() > slot {
 					texture_buffer[slot]
 				} else {
@@ -1531,26 +1538,23 @@ impl MyApp {
 					id
 				};
 				slot += 1;
-				s.with_texture(texture_id, |s: &mut PixState| -> PixResult<()> {
-					s.background(Color::TRANSPARENT);
-					s.clear()?;
-					s.stroke(rgb!(fg.red(), fg.green(), fg.blue(), 255));
-					for font_y in 0..(font.height as i32) {
-						let mut font_line =
-							font.data[((glyph as usize) * font.height) + font_y as usize];
-						for font_x in 0..8i32 {
-							if (font_line & 0x80) != 0 {
-								s.point(Point::new([font_x, font_y]))?;
-							};
-							font_line <<= 1;
-						}
+				s.set_texture_target(texture_id)?;
+				s.background(Color::TRANSPARENT);
+				s.clear()?;
+				s.stroke(rgb!(fg.red(), fg.green(), fg.blue(), 255));
+				for font_y in 0..(font.height as i32) {
+					let mut font_line =
+						font.data[((glyph as usize) * font.height) + font_y as usize];
+					for font_x in 0..8i32 {
+						if (font_line & 0x80) != 0 {
+							s.point(Point::new([font_x, font_y]))?;
+						};
+						font_line <<= 1;
 					}
-					Ok(())
-				})
-				.unwrap();
+				}
+				s.clear_texture_target();
 			}
 		}
-
 		Ok(())
 	}
 
@@ -1563,7 +1567,7 @@ impl MyApp {
 	}
 }
 
-impl AppState for MyApp {
+impl PixEngine for MyApp {
 	/// Perform application initialisation.
 	fn on_start(&mut self, s: &mut PixState) -> PixResult<()> {
 		self.render_glyphs(s)?;
@@ -1580,7 +1584,7 @@ impl AppState for MyApp {
 	/// Called whenever the app has an event to process.
 	///
 	/// We send key up and key down events into a queue for the OS to process later.
-	fn on_event(&mut self, _s: &mut PixState, event: &Event) -> PixResult<()> {
+	fn on_event(&mut self, _s: &mut PixState, event: &Event) -> PixResult<bool> {
 		match event {
 			Event::KeyUp {
 				key: Some(key),
@@ -1588,6 +1592,7 @@ impl AppState for MyApp {
 				repeat: _,
 			} => {
 				self.sender.send(AppEvent::KeyUp(*key)).unwrap();
+				Ok(true)
 			}
 			Event::KeyDown {
 				key: Some(key),
@@ -1595,10 +1600,10 @@ impl AppState for MyApp {
 				repeat: _,
 			} => {
 				self.sender.send(AppEvent::KeyDown(*key)).unwrap();
+				Ok(true)
 			}
-			_ => {}
+			_ => Ok(false),
 		}
-		Ok(())
 	}
 
 	/// Called in a tight-loop to update the application.
@@ -1631,11 +1636,11 @@ impl AppState for MyApp {
 		let num_rows = self.mode.text_height().unwrap();
 		// FRAMEBUFFER is an num_cols x num_rows size array of (u8_glyph, u8_attr).
 		for row in 0..num_rows {
+			let y = row * font_height;
 			for col in 0..num_cols {
 				let cell_no = (row * num_cols) + col;
 				let byte_offset = usize::from(cell_no) * 2;
 				let x = col * 8;
-				let y = row * font_height;
 				let glyph = FRAMEBUFFER.get_at(byte_offset);
 				let attr = common::video::Attr(FRAMEBUFFER.get_at(byte_offset + 1));
 				let fg_idx = attr.fg().as_u8();
