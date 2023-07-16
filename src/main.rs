@@ -802,7 +802,10 @@ extern "C" fn serial_get_info(_device: u8) -> common::FfiOption<common::serial::
 
 /// Set the options for a given serial device. An error is returned if the
 /// options are invalid for that serial device.
-extern "C" fn serial_configure(_device: u8, _config: common::serial::Config) -> common::ApiResult<()> {
+extern "C" fn serial_configure(
+	_device: u8,
+	_config: common::serial::Config,
+) -> common::ApiResult<()> {
 	debug!("serial_configure()");
 	Err(common::Error::Unimplemented).into()
 }
@@ -909,7 +912,7 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 /// `video_get_framebuffer` will return `null`. You must then supply a
 /// pointer to a block of size `Mode::frame_size_bytes()` to
 /// `video_set_framebuffer` before any video will appear.
-extern "C" fn video_set_mode(mode: common::video::Mode) -> common::Result<()> {
+extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()> {
 	info!("video_set_mode({:?})", mode);
 	match mode.timing() {
 		common::video::Timing::T640x480 => {
@@ -986,7 +989,7 @@ extern "C" fn video_get_framebuffer() -> *mut u8 {
 ///
 /// The pointer must point to enough video memory to handle the current video
 /// mode, and any future video mode you set.
-unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::Result<()> {
+unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::ApiResult<()> {
 	Err(common::Error::Unimplemented).into()
 }
 
@@ -1277,7 +1280,10 @@ extern "C" fn audio_mixer_channel_get_info(
 	common::FfiOption::None
 }
 
-extern "C" fn audio_mixer_channel_set_level(_audio_mixer_id: u8, _level: u8) -> common::ApiResult<()> {
+extern "C" fn audio_mixer_channel_set_level(
+	_audio_mixer_id: u8,
+	_level: u8,
+) -> common::ApiResult<()> {
 	debug!("audio_mixer_channel_set_level");
 	common::ApiResult::Err(common::Error::Unimplemented)
 }
