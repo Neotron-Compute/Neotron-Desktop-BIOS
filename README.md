@@ -76,10 +76,11 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 
 * None
 
-### v0.1.0
+### v0.1.0 ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/v0.1.0))
 
 * First release
 * Works with OS 0.5.0
+* Fix colour palette to match Pico BIOS
 
 ## Licence
 
