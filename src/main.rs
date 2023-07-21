@@ -157,518 +157,518 @@ static BIOS_API: common::Api = common::Api {
 
 /// Our standard 256 colour palette
 static PALETTE: [AtomicU32; 256] = [
-	// 0   Black (SYSTEM (#000000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 0).as_packed()),
-	// 1   Maroon (SYSTEM (#800000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(128, 0, 0).as_packed()),
-	// 2   Green (SYSTEM (#008000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 128, 0).as_packed()),
-	// 3   Olive (SYSTEM (#808000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(128, 128, 0).as_packed()),
-	// 4   Navy (SYSTEM (#000080)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 128).as_packed()),
-	// 5   Purple (SYSTEM (#800080)
-	AtomicU32::new(common::video::RGBColour::from_rgb(128, 0, 128).as_packed()),
-	// 6   Teal (SYSTEM (#008080)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 128, 128).as_packed()),
-	// 7   Silver (SYSTEM (#c0c0c0)
-	AtomicU32::new(common::video::RGBColour::from_rgb(192, 192, 192).as_packed()),
-	// 8   Grey (SYSTEM (#808080)
-	AtomicU32::new(common::video::RGBColour::from_rgb(128, 128, 128).as_packed()),
-	// 9   Red (SYSTEM (#ff0000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 0).as_packed()),
-	// 10  Lime (SYSTEM (#00ff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 0).as_packed()),
-	// 11  Yellow (SYSTEM (#ffff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 0).as_packed()),
-	// 12  Blue (SYSTEM (#0000ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 255).as_packed()),
-	// 13  Fuchsia (SYSTEM (#ff00ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 255).as_packed()),
-	// 14  Aqua (SYSTEM (#00ffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 255).as_packed()),
-	// 15  White (SYSTEM (#ffffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 255).as_packed()),
-	// 16  Grey0 (#000000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 0).as_packed()),
-	// 17  NavyBlue (#00005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 95).as_packed()),
-	// 18  DarkBlue (#000087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 135).as_packed()),
-	// 19  Blue3 (#0000af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 175).as_packed()),
-	// 20  Blue3 (#0000d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 215).as_packed()),
-	// 21  Blue1 (#0000ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 0, 255).as_packed()),
-	// 22  DarkGreen (#005f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 0).as_packed()),
-	// 23  DeepSkyBlue4 (#005f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 95).as_packed()),
-	// 24  DeepSkyBlue4 (#005f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 135).as_packed()),
-	// 25  DeepSkyBlue4 (#005faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 175).as_packed()),
-	// 26  DodgerBlue3 (#005fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 215).as_packed()),
-	// 27  DodgerBlue2 (#005fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 95, 255).as_packed()),
-	// 28  Green4 (#008700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 0).as_packed()),
-	// 29  SpringGreen4 (#00875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 95).as_packed()),
-	// 30  Turquoise4 (#008787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 135).as_packed()),
-	// 31  DeepSkyBlue3 (#0087af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 175).as_packed()),
-	// 32  DeepSkyBlue3 (#0087d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 215).as_packed()),
-	// 33  DodgerBlue1 (#0087ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 135, 255).as_packed()),
-	// 34  Green3 (#00af00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 0).as_packed()),
-	// 35  SpringGreen3 (#00af5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 95).as_packed()),
-	// 36  DarkCyan (#00af87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 135).as_packed()),
-	// 37  LightSeaGreen (#00afaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 175).as_packed()),
-	// 38  DeepSkyBlue2 (#00afd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 215).as_packed()),
-	// 39  DeepSkyBlue1 (#00afff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 175, 255).as_packed()),
-	// 40  Green3 (#00d700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 0).as_packed()),
-	// 41  SpringGreen3 (#00d75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 95).as_packed()),
-	// 42  SpringGreen2 (#00d787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 135).as_packed()),
-	// 43  Cyan3 (#00d7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 175).as_packed()),
-	// 44  DarkTurquoise (#00d7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 215).as_packed()),
-	// 45  Turquoise2 (#00d7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 215, 255).as_packed()),
-	// 46  Green1 (#00ff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 0).as_packed()),
-	// 47  SpringGreen2 (#00ff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 95).as_packed()),
-	// 48  SpringGreen1 (#00ff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 135).as_packed()),
-	// 49  MediumSpringGreen (#00ffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 175).as_packed()),
-	// 50  Cyan2 (#00ffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 215).as_packed()),
-	// 51  Cyan1 (#00ffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(0, 255, 255).as_packed()),
-	// 52  DarkRed (#5f0000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 0).as_packed()),
-	// 53  DeepPink4 (#5f005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 95).as_packed()),
-	// 54  Purple4 (#5f0087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 135).as_packed()),
-	// 55  Purple4 (#5f00af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 175).as_packed()),
-	// 56  Purple3 (#5f00d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 215).as_packed()),
-	// 57  BlueViolet (#5f00ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 0, 255).as_packed()),
-	// 58  Orange4 (#5f5f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 0).as_packed()),
-	// 59  Grey37 (#5f5f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 95).as_packed()),
-	// 60  MediumPurple4 (#5f5f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 135).as_packed()),
-	// 61  SlateBlue3 (#5f5faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 175).as_packed()),
-	// 62  SlateBlue3 (#5f5fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 215).as_packed()),
-	// 63  RoyalBlue1 (#5f5fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 95, 255).as_packed()),
-	// 64  Chartreuse4 (#5f8700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 0).as_packed()),
-	// 65  DarkSeaGreen4 (#5f875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 95).as_packed()),
-	// 66  PaleTurquoise4 (#5f8787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 135).as_packed()),
-	// 67  SteelBlue (#5f87af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 175).as_packed()),
-	// 68  SteelBlue3 (#5f87d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 215).as_packed()),
-	// 69  CornflowerBlue (#5f87ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 135, 255).as_packed()),
-	// 70  Chartreuse3 (#5faf00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 0).as_packed()),
-	// 71  DarkSeaGreen4 (#5faf5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 95).as_packed()),
-	// 72  CadetBlue (#5faf87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 135).as_packed()),
-	// 73  CadetBlue (#5fafaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 175).as_packed()),
-	// 74  SkyBlue3 (#5fafd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 215).as_packed()),
-	// 75  SteelBlue1 (#5fafff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 175, 255).as_packed()),
-	// 76  Chartreuse3 (#5fd700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 0).as_packed()),
-	// 77  PaleGreen3 (#5fd75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 95).as_packed()),
-	// 78  SeaGreen3 (#5fd787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 135).as_packed()),
-	// 79  Aquamarine3 (#5fd7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 175).as_packed()),
-	// 80  MediumTurquoise (#5fd7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 215).as_packed()),
-	// 81  SteelBlue1 (#5fd7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 215, 255).as_packed()),
-	// 82  Chartreuse2 (#5fff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 0).as_packed()),
-	// 83  SeaGreen2 (#5fff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 95).as_packed()),
-	// 84  SeaGreen1 (#5fff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 135).as_packed()),
-	// 85  SeaGreen1 (#5fffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 175).as_packed()),
-	// 86  Aquamarine1 (#5fffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 215).as_packed()),
-	// 87  DarkSlateGray2 (#5fffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(95, 255, 255).as_packed()),
-	// 88  DarkRed (#870000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 0).as_packed()),
-	// 89  DeepPink4 (#87005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 95).as_packed()),
-	// 90  DarkMagenta (#870087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 135).as_packed()),
-	// 91  DarkMagenta (#8700af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 175).as_packed()),
-	// 92  DarkViolet (#8700d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 215).as_packed()),
-	// 93  Purple (#8700ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 0, 255).as_packed()),
-	// 94  Orange4 (#875f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 0).as_packed()),
-	// 95  LightPink4 (#875f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 95).as_packed()),
-	// 96  Plum4 (#875f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 135).as_packed()),
-	// 97  MediumPurple3 (#875faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 175).as_packed()),
-	// 98  MediumPurple3 (#875fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 215).as_packed()),
-	// 99  SlateBlue1 (#875fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 95, 255).as_packed()),
-	// 100 Yellow4 (#878700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 0).as_packed()),
-	// 101 Wheat4 (#87875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 95).as_packed()),
-	// 102 Grey53 (#878787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 135).as_packed()),
-	// 103 LightSlateGrey (#8787af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 175).as_packed()),
-	// 104 MediumPurple (#8787d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 215).as_packed()),
-	// 105 LightSlateBlue (#8787ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 135, 255).as_packed()),
-	// 106 Yellow4 (#87af00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 0).as_packed()),
-	// 107 DarkOliveGreen3 (#87af5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 95).as_packed()),
-	// 108 DarkSeaGreen (#87af87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 135).as_packed()),
-	// 109 LightSkyBlue3 (#87afaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 175).as_packed()),
-	// 110 LightSkyBlue3 (#87afd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 215).as_packed()),
-	// 111 SkyBlue2 (#87afff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 175, 255).as_packed()),
-	// 112 Chartreuse2 (#87d700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 0).as_packed()),
-	// 113 DarkOliveGreen3 (#87d75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 95).as_packed()),
-	// 114 PaleGreen3 (#87d787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 135).as_packed()),
-	// 115 DarkSeaGreen3 (#87d7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 175).as_packed()),
-	// 116 DarkSlateGray3 (#87d7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 215).as_packed()),
-	// 117 SkyBlue1 (#87d7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 215, 255).as_packed()),
-	// 118 Chartreuse1 (#87ff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 0).as_packed()),
-	// 119 LightGreen (#87ff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 95).as_packed()),
-	// 120 LightGreen (#87ff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 135).as_packed()),
-	// 121 PaleGreen1 (#87ffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 175).as_packed()),
-	// 122 Aquamarine1 (#87ffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 215).as_packed()),
-	// 123 DarkSlateGray1 (#87ffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(135, 255, 255).as_packed()),
-	// 124 Red3 (#af0000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 0).as_packed()),
-	// 125 DeepPink4 (#af005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 95).as_packed()),
-	// 126 MediumVioletRed (#af0087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 135).as_packed()),
-	// 127 Magenta3 (#af00af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 175).as_packed()),
-	// 128 DarkViolet (#af00d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 215).as_packed()),
-	// 129 Purple (#af00ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 0, 255).as_packed()),
-	// 130 DarkOrange3 (#af5f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 0).as_packed()),
-	// 131 IndianRed (#af5f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 95).as_packed()),
-	// 132 HotPink3 (#af5f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 135).as_packed()),
-	// 133 MediumOrchid3 (#af5faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 175).as_packed()),
-	// 134 MediumOrchid (#af5fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 215).as_packed()),
-	// 135 MediumPurple2 (#af5fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 95, 255).as_packed()),
-	// 136 DarkGoldenrod (#af8700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 0).as_packed()),
-	// 137 LightSalmon3 (#af875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 95).as_packed()),
-	// 138 RosyBrown (#af8787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 135).as_packed()),
-	// 139 Grey63 (#af87af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 175).as_packed()),
-	// 140 MediumPurple2 (#af87d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 215).as_packed()),
-	// 141 MediumPurple1 (#af87ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 135, 255).as_packed()),
-	// 142 Gold3 (#afaf00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 0).as_packed()),
-	// 143 DarkKhaki (#afaf5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 95).as_packed()),
-	// 144 NavajoWhite3 (#afaf87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 135).as_packed()),
-	// 145 Grey69 (#afafaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 175).as_packed()),
-	// 146 LightSteelBlue3 (#afafd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 215).as_packed()),
-	// 147 LightSteelBlue (#afafff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 175, 255).as_packed()),
-	// 148 Yellow3 (#afd700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 0).as_packed()),
-	// 149 DarkOliveGreen3 (#afd75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 95).as_packed()),
-	// 150 DarkSeaGreen3 (#afd787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 135).as_packed()),
-	// 151 DarkSeaGreen2 (#afd7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 175).as_packed()),
-	// 152 LightCyan3 (#afd7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 215).as_packed()),
-	// 153 LightSkyBlue1 (#afd7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 215, 255).as_packed()),
-	// 154 GreenYellow (#afff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 0).as_packed()),
-	// 155 DarkOliveGreen2 (#afff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 95).as_packed()),
-	// 156 PaleGreen1 (#afff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 135).as_packed()),
-	// 157 DarkSeaGreen2 (#afffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 175).as_packed()),
-	// 158 DarkSeaGreen1 (#afffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 215).as_packed()),
-	// 159 PaleTurquoise1 (#afffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(175, 255, 255).as_packed()),
-	// 160 Red3 (#d70000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 0).as_packed()),
-	// 161 DeepPink3 (#d7005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 95).as_packed()),
-	// 162 DeepPink3 (#d70087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 135).as_packed()),
-	// 163 Magenta3 (#d700af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 175).as_packed()),
-	// 164 Magenta3 (#d700d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 215).as_packed()),
-	// 165 Magenta2 (#d700ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 0, 255).as_packed()),
-	// 166 DarkOrange3 (#d75f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 0).as_packed()),
-	// 167 IndianRed (#d75f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 95).as_packed()),
-	// 168 HotPink3 (#d75f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 135).as_packed()),
-	// 169 HotPink2 (#d75faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 175).as_packed()),
-	// 170 Orchid (#d75fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 215).as_packed()),
-	// 171 MediumOrchid1 (#d75fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 95, 255).as_packed()),
-	// 172 Orange3 (#d78700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 0).as_packed()),
-	// 173 LightSalmon3 (#d7875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 95).as_packed()),
-	// 174 LightPink3 (#d78787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 135).as_packed()),
-	// 175 Pink3 (#d787af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 175).as_packed()),
-	// 176 Plum3 (#d787d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 215).as_packed()),
-	// 177 Violet (#d787ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 135, 255).as_packed()),
-	// 178 Gold3 (#d7af00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 0).as_packed()),
-	// 179 LightGoldenrod3 (#d7af5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 95).as_packed()),
-	// 180 Tan (#d7af87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 135).as_packed()),
-	// 181 MistyRose3 (#d7afaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 175).as_packed()),
-	// 182 Thistle3 (#d7afd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 215).as_packed()),
-	// 183 Plum2 (#d7afff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 175, 255).as_packed()),
-	// 184 Yellow3 (#d7d700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 0).as_packed()),
-	// 185 Khaki3 (#d7d75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 95).as_packed()),
-	// 186 LightGoldenrod2 (#d7d787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 135).as_packed()),
-	// 187 LightYellow3 (#d7d7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 175).as_packed()),
-	// 188 Grey84 (#d7d7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 215).as_packed()),
-	// 189 LightSteelBlue1 (#d7d7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 215, 255).as_packed()),
-	// 190 Yellow2 (#d7ff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 0).as_packed()),
-	// 191 DarkOliveGreen1 (#d7ff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 95).as_packed()),
-	// 192 DarkOliveGreen1 (#d7ff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 135).as_packed()),
-	// 193 DarkSeaGreen1 (#d7ffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 175).as_packed()),
-	// 194 Honeydew2 (#d7ffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 215).as_packed()),
-	// 195 LightCyan1 (#d7ffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(215, 255, 255).as_packed()),
-	// 196 Red1 (#ff0000)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 0).as_packed()),
-	// 197 DeepPink2 (#ff005f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 95).as_packed()),
-	// 198 DeepPink1 (#ff0087)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 135).as_packed()),
-	// 199 DeepPink1 (#ff00af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 175).as_packed()),
-	// 200 Magenta2 (#ff00d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 215).as_packed()),
-	// 201 Magenta1 (#ff00ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 0, 255).as_packed()),
-	// 202 OrangeRed1 (#ff5f00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 0).as_packed()),
-	// 203 IndianRed1 (#ff5f5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 95).as_packed()),
-	// 204 IndianRed1 (#ff5f87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 135).as_packed()),
-	// 205 HotPink (#ff5faf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 175).as_packed()),
-	// 206 HotPink (#ff5fd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 215).as_packed()),
-	// 207 MediumOrchid1 (#ff5fff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 95, 255).as_packed()),
-	// 208 DarkOrange (#ff8700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 0).as_packed()),
-	// 209 Salmon1 (#ff875f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 95).as_packed()),
-	// 210 LightCoral (#ff8787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 135).as_packed()),
-	// 211 PaleVioletRed1 (#ff87af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 175).as_packed()),
-	// 212 Orchid2 (#ff87d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 215).as_packed()),
-	// 213 Orchid1 (#ff87ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 135, 255).as_packed()),
-	// 214 Orange1 (#ffaf00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 0).as_packed()),
-	// 215 SandyBrown (#ffaf5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 95).as_packed()),
-	// 216 LightSalmon1 (#ffaf87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 135).as_packed()),
-	// 217 LightPink1 (#ffafaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 175).as_packed()),
-	// 218 Pink1 (#ffafd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 215).as_packed()),
-	// 219 Plum1 (#ffafff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 175, 255).as_packed()),
-	// 220 Gold1 (#ffd700)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 0).as_packed()),
-	// 221 LightGoldenrod2 (#ffd75f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 95).as_packed()),
-	// 222 LightGoldenrod2 (#ffd787)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 135).as_packed()),
-	// 223 NavajoWhite1 (#ffd7af)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 175).as_packed()),
-	// 224 MistyRose1 (#ffd7d7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 215).as_packed()),
-	// 225 Thistle1 (#ffd7ff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 215, 255).as_packed()),
-	// 226 Yellow1 (#ffff00)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 0).as_packed()),
-	// 227 LightGoldenrod1 (#ffff5f)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 95).as_packed()),
-	// 228 Khaki1 (#ffff87)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 135).as_packed()),
-	// 229 Wheat1 (#ffffaf)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 175).as_packed()),
-	// 230 Cornsilk1 (#ffffd7)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 215).as_packed()),
-	// 231 Grey100 (#ffffff)
-	AtomicU32::new(common::video::RGBColour::from_rgb(255, 255, 255).as_packed()),
-	// 232 Grey3 (#080808)
-	AtomicU32::new(common::video::RGBColour::from_rgb(8, 8, 8).as_packed()),
-	// 233 Grey7 (#121212)
-	AtomicU32::new(common::video::RGBColour::from_rgb(18, 18, 18).as_packed()),
-	// 234 Grey11 (#1c1c1c)
-	AtomicU32::new(common::video::RGBColour::from_rgb(28, 28, 28).as_packed()),
-	// 235 Grey15 (#262626)
-	AtomicU32::new(common::video::RGBColour::from_rgb(38, 38, 38).as_packed()),
-	// 236 Grey19 (#303030)
-	AtomicU32::new(common::video::RGBColour::from_rgb(48, 48, 48).as_packed()),
-	// 237 Grey23 (#3a3a3a)
-	AtomicU32::new(common::video::RGBColour::from_rgb(58, 58, 58).as_packed()),
-	// 238 Grey27 (#444444)
-	AtomicU32::new(common::video::RGBColour::from_rgb(68, 68, 68).as_packed()),
-	// 239 Grey30 (#4e4e4e)
-	AtomicU32::new(common::video::RGBColour::from_rgb(78, 78, 78).as_packed()),
-	// 240 Grey35 (#585858)
-	AtomicU32::new(common::video::RGBColour::from_rgb(88, 88, 88).as_packed()),
-	// 241 Grey39 (#626262)
-	AtomicU32::new(common::video::RGBColour::from_rgb(98, 98, 98).as_packed()),
-	// 242 Grey42 (#6c6c6c)
-	AtomicU32::new(common::video::RGBColour::from_rgb(108, 108, 108).as_packed()),
-	// 243 Grey46 (#767676)
-	AtomicU32::new(common::video::RGBColour::from_rgb(118, 118, 118).as_packed()),
-	// 244 Grey50 (#808080)
-	AtomicU32::new(common::video::RGBColour::from_rgb(128, 128, 128).as_packed()),
-	// 245 Grey54 (#8a8a8a)
-	AtomicU32::new(common::video::RGBColour::from_rgb(138, 138, 138).as_packed()),
-	// 246 Grey58 (#949494)
-	AtomicU32::new(common::video::RGBColour::from_rgb(148, 148, 148).as_packed()),
-	// 247 Grey62 (#9e9e9e)
-	AtomicU32::new(common::video::RGBColour::from_rgb(158, 158, 158).as_packed()),
-	// 248 Grey66 (#a8a8a8)
-	AtomicU32::new(common::video::RGBColour::from_rgb(168, 168, 168).as_packed()),
-	// 249 Grey70 (#b2b2b2)
-	AtomicU32::new(common::video::RGBColour::from_rgb(178, 178, 178).as_packed()),
-	// 250 Grey74 (#bcbcbc)
-	AtomicU32::new(common::video::RGBColour::from_rgb(188, 188, 188).as_packed()),
-	// 251 Grey78 (#c6c6c6)
-	AtomicU32::new(common::video::RGBColour::from_rgb(198, 198, 198).as_packed()),
-	// 252 Grey82 (#d0d0d0)
-	AtomicU32::new(common::video::RGBColour::from_rgb(208, 208, 208).as_packed()),
-	// 253 Grey85 (#dadada)
-	AtomicU32::new(common::video::RGBColour::from_rgb(218, 218, 218).as_packed()),
-	// 254 Grey89 (#e4e4e4)
-	AtomicU32::new(common::video::RGBColour::from_rgb(228, 228, 228).as_packed()),
-	// 255 Grey93 (#eeeeee)
-	AtomicU32::new(common::video::RGBColour::from_rgb(238, 238, 238).as_packed()),
+	// Index 000: 0x000 (Black)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0x00).as_packed()),
+	// Index 001: 0x00a (Blue)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0xaa).as_packed()),
+	// Index 002: 0x0a0 (Green)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0x00).as_packed()),
+	// Index 003: 0x0aa (Cyan)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0xaa).as_packed()),
+	// Index 004: 0xa00 (Red)
+	AtomicU32::new(RGBColour::from_rgb(0xaa, 0x00, 0x00).as_packed()),
+	// Index 005: 0xa0a (Magenta)
+	AtomicU32::new(RGBColour::from_rgb(0xaa, 0x00, 0xaa).as_packed()),
+	// Index 006: 0xaa0 (Brown)
+	AtomicU32::new(RGBColour::from_rgb(0xaa, 0xaa, 0x00).as_packed()),
+	// Index 007: 0xaaa (Light Gray)
+	AtomicU32::new(RGBColour::from_rgb(0xaa, 0xaa, 0xaa).as_packed()),
+	// Index 008: 0x666 (Dark Gray)
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x66, 0x66).as_packed()),
+	// Index 009: 0x00f (Light Blue)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0xff).as_packed()),
+	// Index 010: 0x0f0 (Light Green)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0x00).as_packed()),
+	// Index 011: 0x0ff (Light Cyan)
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0xff).as_packed()),
+	// Index 012: 0xf00 (Light Red)
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0x00).as_packed()),
+	// Index 013: 0xf0f (Pink)
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0xff).as_packed()),
+	// Index 014: 0xff0 (Yellow)
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0x00).as_packed()),
+	// Index 015: 0xfff (White)
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0xff).as_packed()),
+	// Index 016: 0x003
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0x33).as_packed()),
+	// Index 017: 0x006
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0x66).as_packed()),
+	// Index 018: 0x00c
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x00, 0xcc).as_packed()),
+	// Index 019: 0x020
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0x00).as_packed()),
+	// Index 020: 0x023
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0x33).as_packed()),
+	// Index 021: 0x026
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0x66).as_packed()),
+	// Index 022: 0x028
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0x88).as_packed()),
+	// Index 023: 0x02c
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0xcc).as_packed()),
+	// Index 024: 0x02f
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x22, 0xff).as_packed()),
+	// Index 025: 0x040
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0x00).as_packed()),
+	// Index 026: 0x043
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0x33).as_packed()),
+	// Index 027: 0x046
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0x66).as_packed()),
+	// Index 028: 0x048
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0x88).as_packed()),
+	// Index 029: 0x04c
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0xcc).as_packed()),
+	// Index 030: 0x04f
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x44, 0xff).as_packed()),
+	// Index 031: 0x083
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x88, 0x33).as_packed()),
+	// Index 032: 0x086
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x88, 0x66).as_packed()),
+	// Index 033: 0x08c
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x88, 0xcc).as_packed()),
+	// Index 034: 0x08f
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0x88, 0xff).as_packed()),
+	// Index 035: 0x0a0
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0x00).as_packed()),
+	// Index 036: 0x0a3
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0x33).as_packed()),
+	// Index 037: 0x0a6
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0x66).as_packed()),
+	// Index 038: 0x0a8
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0x88).as_packed()),
+	// Index 039: 0x0ac
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0xcc).as_packed()),
+	// Index 040: 0x0af
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xaa, 0xff).as_packed()),
+	// Index 041: 0x0e0
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0x00).as_packed()),
+	// Index 042: 0x0e3
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0x33).as_packed()),
+	// Index 043: 0x0e6
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0x66).as_packed()),
+	// Index 044: 0x0e8
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0x88).as_packed()),
+	// Index 045: 0x0ec
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0xcc).as_packed()),
+	// Index 046: 0x0ef
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xee, 0xff).as_packed()),
+	// Index 047: 0x0f3
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0x33).as_packed()),
+	// Index 048: 0x0f6
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0x66).as_packed()),
+	// Index 049: 0x0f8
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0x88).as_packed()),
+	// Index 050: 0x0fc
+	AtomicU32::new(RGBColour::from_rgb(0x00, 0xff, 0xcc).as_packed()),
+	// Index 051: 0x300
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0x00).as_packed()),
+	// Index 052: 0x303
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0x33).as_packed()),
+	// Index 053: 0x306
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0x66).as_packed()),
+	// Index 054: 0x308
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0x88).as_packed()),
+	// Index 055: 0x30c
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0xcc).as_packed()),
+	// Index 056: 0x30f
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x00, 0xff).as_packed()),
+	// Index 057: 0x320
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0x00).as_packed()),
+	// Index 058: 0x323
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0x33).as_packed()),
+	// Index 059: 0x326
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0x66).as_packed()),
+	// Index 060: 0x328
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0x88).as_packed()),
+	// Index 061: 0x32c
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0xcc).as_packed()),
+	// Index 062: 0x32f
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x22, 0xff).as_packed()),
+	// Index 063: 0x340
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0x00).as_packed()),
+	// Index 064: 0x343
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0x33).as_packed()),
+	// Index 065: 0x346
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0x66).as_packed()),
+	// Index 066: 0x348
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0x88).as_packed()),
+	// Index 067: 0x34c
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0xcc).as_packed()),
+	// Index 068: 0x34f
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x44, 0xff).as_packed()),
+	// Index 069: 0x380
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0x00).as_packed()),
+	// Index 070: 0x383
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0x33).as_packed()),
+	// Index 071: 0x386
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0x66).as_packed()),
+	// Index 072: 0x388
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0x88).as_packed()),
+	// Index 073: 0x38c
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0xcc).as_packed()),
+	// Index 074: 0x38f
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x88, 0xff).as_packed()),
+	// Index 075: 0x3a0
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0x00).as_packed()),
+	// Index 076: 0x3a3
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0x33).as_packed()),
+	// Index 077: 0x3a6
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0x66).as_packed()),
+	// Index 078: 0x3a8
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0x88).as_packed()),
+	// Index 079: 0x3ac
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0xcc).as_packed()),
+	// Index 080: 0x3af
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xaa, 0xff).as_packed()),
+	// Index 081: 0x3e0
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0x00).as_packed()),
+	// Index 082: 0x3e3
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0x33).as_packed()),
+	// Index 083: 0x3e6
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0x66).as_packed()),
+	// Index 084: 0x3e8
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0x88).as_packed()),
+	// Index 085: 0x3ec
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0xcc).as_packed()),
+	// Index 086: 0x3ef
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xee, 0xff).as_packed()),
+	// Index 087: 0x3f0
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0x00).as_packed()),
+	// Index 088: 0x3f3
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0x33).as_packed()),
+	// Index 089: 0x3f6
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0x66).as_packed()),
+	// Index 090: 0x3f8
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0x88).as_packed()),
+	// Index 091: 0x3fc
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0xcc).as_packed()),
+	// Index 092: 0x3ff
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0xff, 0xff).as_packed()),
+	// Index 093: 0x600
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0x00).as_packed()),
+	// Index 094: 0x603
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0x33).as_packed()),
+	// Index 095: 0x606
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0x66).as_packed()),
+	// Index 096: 0x608
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0x88).as_packed()),
+	// Index 097: 0x60c
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0xcc).as_packed()),
+	// Index 098: 0x60f
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x00, 0xff).as_packed()),
+	// Index 099: 0x620
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0x00).as_packed()),
+	// Index 100: 0x623
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0x33).as_packed()),
+	// Index 101: 0x626
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0x66).as_packed()),
+	// Index 102: 0x628
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0x88).as_packed()),
+	// Index 103: 0x62c
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0xcc).as_packed()),
+	// Index 104: 0x62f
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x22, 0xff).as_packed()),
+	// Index 105: 0x640
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0x00).as_packed()),
+	// Index 106: 0x643
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0x33).as_packed()),
+	// Index 107: 0x646
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0x66).as_packed()),
+	// Index 108: 0x648
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0x88).as_packed()),
+	// Index 109: 0x64c
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0xcc).as_packed()),
+	// Index 110: 0x64f
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x44, 0xff).as_packed()),
+	// Index 111: 0x680
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0x00).as_packed()),
+	// Index 112: 0x683
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0x33).as_packed()),
+	// Index 113: 0x686
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0x66).as_packed()),
+	// Index 114: 0x688
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0x88).as_packed()),
+	// Index 115: 0x68c
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0xcc).as_packed()),
+	// Index 116: 0x68f
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0x88, 0xff).as_packed()),
+	// Index 117: 0x6a0
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0x00).as_packed()),
+	// Index 118: 0x6a3
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0x33).as_packed()),
+	// Index 119: 0x6a6
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0x66).as_packed()),
+	// Index 120: 0x6a8
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0x88).as_packed()),
+	// Index 121: 0x6ac
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0xcc).as_packed()),
+	// Index 122: 0x6af
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xaa, 0xff).as_packed()),
+	// Index 123: 0x6e0
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0x00).as_packed()),
+	// Index 124: 0x6e3
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0x33).as_packed()),
+	// Index 125: 0x6e6
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0x66).as_packed()),
+	// Index 126: 0x6e8
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0x88).as_packed()),
+	// Index 127: 0x6ec
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0xcc).as_packed()),
+	// Index 128: 0x6ef
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xee, 0xff).as_packed()),
+	// Index 129: 0x6f0
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0x00).as_packed()),
+	// Index 130: 0x6f3
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0x33).as_packed()),
+	// Index 131: 0x6f6
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0x66).as_packed()),
+	// Index 132: 0x6f8
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0x88).as_packed()),
+	// Index 133: 0x6fc
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0xcc).as_packed()),
+	// Index 134: 0x6ff
+	AtomicU32::new(RGBColour::from_rgb(0x66, 0xff, 0xff).as_packed()),
+	// Index 135: 0x803
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x00, 0x33).as_packed()),
+	// Index 136: 0x806
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x00, 0x66).as_packed()),
+	// Index 137: 0x80c
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x00, 0xcc).as_packed()),
+	// Index 138: 0x80f
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x00, 0xff).as_packed()),
+	// Index 139: 0x820
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0x00).as_packed()),
+	// Index 140: 0x823
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0x33).as_packed()),
+	// Index 141: 0x826
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0x66).as_packed()),
+	// Index 142: 0x828
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0x88).as_packed()),
+	// Index 143: 0x82c
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0xcc).as_packed()),
+	// Index 144: 0x82f
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x22, 0xff).as_packed()),
+	// Index 145: 0x840
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0x00).as_packed()),
+	// Index 146: 0x843
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0x33).as_packed()),
+	// Index 147: 0x846
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0x66).as_packed()),
+	// Index 148: 0x848
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0x88).as_packed()),
+	// Index 149: 0x84c
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0xcc).as_packed()),
+	// Index 150: 0x84f
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x44, 0xff).as_packed()),
+	// Index 151: 0x883
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x88, 0x33).as_packed()),
+	// Index 152: 0x886
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x88, 0x66).as_packed()),
+	// Index 153: 0x88c
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x88, 0xcc).as_packed()),
+	// Index 154: 0x88f
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0x88, 0xff).as_packed()),
+	// Index 155: 0x8a0
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0x00).as_packed()),
+	// Index 156: 0x8a3
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0x33).as_packed()),
+	// Index 157: 0x8a6
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0x66).as_packed()),
+	// Index 158: 0x8a8
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0x88).as_packed()),
+	// Index 159: 0x8ac
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0xcc).as_packed()),
+	// Index 160: 0x8af
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xaa, 0xff).as_packed()),
+	// Index 161: 0x8e0
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0x00).as_packed()),
+	// Index 162: 0x8e3
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0x33).as_packed()),
+	// Index 163: 0x8e6
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0x66).as_packed()),
+	// Index 164: 0x8e8
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0x88).as_packed()),
+	// Index 165: 0x8ec
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0xcc).as_packed()),
+	// Index 166: 0x8ef
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xee, 0xff).as_packed()),
+	// Index 167: 0x8f0
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0x00).as_packed()),
+	// Index 168: 0x8f3
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0x33).as_packed()),
+	// Index 169: 0x8f6
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0x66).as_packed()),
+	// Index 170: 0x8f8
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0x88).as_packed()),
+	// Index 171: 0x8fc
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0xcc).as_packed()),
+	// Index 172: 0x8ff
+	AtomicU32::new(RGBColour::from_rgb(0x88, 0xff, 0xff).as_packed()),
+	// Index 173: 0xc00
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0x00).as_packed()),
+	// Index 174: 0xc03
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0x33).as_packed()),
+	// Index 175: 0xc06
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0x66).as_packed()),
+	// Index 176: 0xc08
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0x88).as_packed()),
+	// Index 177: 0xc0c
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0xcc).as_packed()),
+	// Index 178: 0xc0f
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x00, 0xff).as_packed()),
+	// Index 179: 0xc20
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0x00).as_packed()),
+	// Index 180: 0xc23
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0x33).as_packed()),
+	// Index 181: 0xc26
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0x66).as_packed()),
+	// Index 182: 0xc28
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0x88).as_packed()),
+	// Index 183: 0xc2c
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0xcc).as_packed()),
+	// Index 184: 0xc2f
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x22, 0xff).as_packed()),
+	// Index 185: 0xc40
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0x00).as_packed()),
+	// Index 186: 0xc43
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0x33).as_packed()),
+	// Index 187: 0xc46
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0x66).as_packed()),
+	// Index 188: 0xc48
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0x88).as_packed()),
+	// Index 189: 0xc4c
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0xcc).as_packed()),
+	// Index 190: 0xc4f
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x44, 0xff).as_packed()),
+	// Index 191: 0xc80
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0x00).as_packed()),
+	// Index 192: 0xc83
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0x33).as_packed()),
+	// Index 193: 0xc86
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0x66).as_packed()),
+	// Index 194: 0xc88
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0x88).as_packed()),
+	// Index 195: 0xc8c
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0xcc).as_packed()),
+	// Index 196: 0xc8f
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0x88, 0xff).as_packed()),
+	// Index 197: 0xca0
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0x00).as_packed()),
+	// Index 198: 0xca3
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0x33).as_packed()),
+	// Index 199: 0xca6
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0x66).as_packed()),
+	// Index 200: 0xca8
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0x88).as_packed()),
+	// Index 201: 0xcac
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0xcc).as_packed()),
+	// Index 202: 0xcaf
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xaa, 0xff).as_packed()),
+	// Index 203: 0xce0
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0x00).as_packed()),
+	// Index 204: 0xce3
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0x33).as_packed()),
+	// Index 205: 0xce6
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0x66).as_packed()),
+	// Index 206: 0xce8
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0x88).as_packed()),
+	// Index 207: 0xcec
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0xcc).as_packed()),
+	// Index 208: 0xcef
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xee, 0xff).as_packed()),
+	// Index 209: 0xcf0
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0x00).as_packed()),
+	// Index 210: 0xcf3
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0x33).as_packed()),
+	// Index 211: 0xcf6
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0x66).as_packed()),
+	// Index 212: 0xcf8
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0x88).as_packed()),
+	// Index 213: 0xcfc
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0xcc).as_packed()),
+	// Index 214: 0xcff
+	AtomicU32::new(RGBColour::from_rgb(0xcc, 0xff, 0xff).as_packed()),
+	// Index 215: 0xf03
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0x33).as_packed()),
+	// Index 216: 0xf06
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0x66).as_packed()),
+	// Index 217: 0xf08
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0x88).as_packed()),
+	// Index 218: 0xf0c
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x00, 0xcc).as_packed()),
+	// Index 219: 0xf20
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0x00).as_packed()),
+	// Index 220: 0xf23
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0x33).as_packed()),
+	// Index 221: 0xf26
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0x66).as_packed()),
+	// Index 222: 0xf28
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0x88).as_packed()),
+	// Index 223: 0xf2c
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0xcc).as_packed()),
+	// Index 224: 0xf2f
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x22, 0xff).as_packed()),
+	// Index 225: 0xf40
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0x00).as_packed()),
+	// Index 226: 0xf43
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0x33).as_packed()),
+	// Index 227: 0xf46
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0x66).as_packed()),
+	// Index 228: 0xf48
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0x88).as_packed()),
+	// Index 229: 0xf4c
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0xcc).as_packed()),
+	// Index 230: 0xf4f
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x44, 0xff).as_packed()),
+	// Index 231: 0xf80
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0x00).as_packed()),
+	// Index 232: 0xf83
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0x33).as_packed()),
+	// Index 233: 0xf86
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0x66).as_packed()),
+	// Index 234: 0xf88
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0x88).as_packed()),
+	// Index 235: 0xf8c
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0xcc).as_packed()),
+	// Index 236: 0xf8f
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0x88, 0xff).as_packed()),
+	// Index 237: 0xfa0
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0x00).as_packed()),
+	// Index 238: 0xfa3
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0x33).as_packed()),
+	// Index 239: 0xfa6
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0x66).as_packed()),
+	// Index 240: 0xfa8
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0x88).as_packed()),
+	// Index 241: 0xfac
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0xcc).as_packed()),
+	// Index 242: 0xfaf
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xaa, 0xff).as_packed()),
+	// Index 243: 0xfe0
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0x00).as_packed()),
+	// Index 244: 0xfe3
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0x33).as_packed()),
+	// Index 245: 0xfe6
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0x66).as_packed()),
+	// Index 246: 0xfe8
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0x88).as_packed()),
+	// Index 247: 0xfec
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0xcc).as_packed()),
+	// Index 248: 0xfef
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xee, 0xff).as_packed()),
+	// Index 249: 0xff3
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0x33).as_packed()),
+	// Index 250: 0xff6
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0x66).as_packed()),
+	// Index 251: 0xff8
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0x88).as_packed()),
+	// Index 252: 0xffc
+	AtomicU32::new(RGBColour::from_rgb(0xff, 0xff, 0xcc).as_packed()),
+	// Index 253: 0xbbb
+	AtomicU32::new(RGBColour::from_rgb(0xbb, 0xbb, 0xbb).as_packed()),
+	// Index 254: 0x333
+	AtomicU32::new(RGBColour::from_rgb(0x33, 0x33, 0x33).as_packed()),
+	// Index 255: 0x777
+	AtomicU32::new(RGBColour::from_rgb(0x77, 0x77, 0x77).as_packed()),
 ];
 
 static VIDEO_MODE: AtomicU8 = AtomicU8::new(0);
