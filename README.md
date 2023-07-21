@@ -64,16 +64,22 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 ## Features
 
 * GUI window with pixel-perfect video rendering
-* TODO: UART support
-* TODO: SD/MMC emulation support
+* Block device support
+* Keyboard support
+* Power-off support
 * TODO: Audio support
-* TODO: Human Interface Device support
+* TODO: UART support
 
 ## Changelog
 
 ### Unreleased Changes ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/main))
 
+* None
+
+### v0.1.0
+
 * First release
+* Works with OS 0.5.0
 
 ## Licence
 
