@@ -151,6 +151,8 @@ static BIOS_API: common::Api = common::Api {
 	block_read,
 	block_verify,
 	power_idle,
+	power_control,
+	compare_and_swap_bool,
 };
 
 /// Our standard 256 colour palette
@@ -1513,6 +1515,20 @@ extern "C" fn block_verify(
 
 extern "C" fn power_idle() {
 	std::thread::sleep(std::time::Duration::from_millis(1));
+}
+
+extern "C" fn power_control(mode: common::PowerMode) -> ! {
+	println!("Got power mode {:?}, but quitting...", mode);
+	std::process::exit(0);
+}
+
+extern "C" fn compare_and_swap_bool(
+	item: &std::sync::atomic::AtomicBool,
+	old_value: bool,
+	new_value: bool,
+) -> bool {
+	item.compare_exchange(old_value, new_value, Ordering::SeqCst, Ordering::SeqCst)
+		.is_ok()
 }
 
 // ===========================================================================
