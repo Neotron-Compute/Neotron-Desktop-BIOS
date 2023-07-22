@@ -28,7 +28,8 @@ Build and run this BIOS (and use it to boot Neotron OS) with...
 ```console
 ~ $ git checkout https://github.com/neotron-compute/Neotron-Desktop-BIOS.git
 ~ $ cd Neotron-Desktop-BIOS
-~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --nvram=./nvram.dat --os=./libneotron_os.so
+~/Neotron-Desktop-BIOS $ gunzip -c disk.img.gz > disk.img
+~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --nvram=./nvram.dat --os=./libneotron_os.so --disk=./disk.img
 ```
 
 In the OS run the `shutdown` command to quit.
@@ -66,6 +67,8 @@ The file `libneotron_os.so` is not supplied. You can build it with:
    ```console
    C:\Users\user\Documents\neotron-desktop-bios> cargo run --release -- --nvram=.\nvram.dat --os=.\neotron_os.dll
    ```
+
+   Sorry, if you want to use the disk image you'll need a Windows version of `gunzip` to unpack it. Git Bash might work.
 
    In the OS run the `shutdown` command to quit.
 
