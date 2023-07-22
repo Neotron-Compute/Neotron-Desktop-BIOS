@@ -28,10 +28,10 @@ Build and run this BIOS (and use it to boot Neotron OS) with...
 ```console
 ~ $ git checkout https://github.com/neotron-compute/Neotron-Desktop-BIOS.git
 ~ $ cd Neotron-Desktop-BIOS
-~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --config=./nvram.dat --os=./libneotron_os.so
+~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --nvram=./nvram.dat --os=./libneotron_os.so
 ```
 
-Press `Esc` with the GUI window selected to quit the BIOS.
+In the OS run the `shutdown` command to quit.
 
 The file `libneotron_os.so` is not supplied. You can build it with:
 
@@ -61,12 +61,30 @@ The file `libneotron_os.so` is not supplied. You can build it with:
    C:\Users\user\Documents> set LIB=%LIB%;C:\Users\user\Documents\vcpkg\installed\x64-windows\lib
    ```
 
+4. Build as usual:
+
+   ```console
+   C:\Users\user\Documents\neotron-desktop-bios> cargo run --release -- --nvram=.\nvram.dat --os=.\neotron_os.dll
+   ```
+
+   In the OS run the `shutdown` command to quit.
+
+   The file `neotron_os.dll` is not supplied. You can build it with:
+
+   ```console
+   C:\Users\user\Documents> git checkout https://github.com/neotron-compute/neotron-os.git
+   C:\Users\user\Documents> cd neotron-os
+   C:\Users\user\Documents\neotron-os> cargo build --release --lib
+   C:\Users\user\Documents\neotron-os> copy .\target\release\neotron_os.dll ..\Neotron-Desktop-BIOS
+   ```
+
 ## Features
 
 * GUI window with pixel-perfect video rendering
 * Block device support
 * Keyboard support
 * Power-off support
+* Config file support
 * TODO: Audio support
 * TODO: UART support
 
@@ -74,7 +92,7 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 
 ### Unreleased Changes ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/main))
 
-* None
+* Added config get/set
 
 ### v0.1.0 ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/v0.1.0))
 

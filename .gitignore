@@ -8,6 +8,7 @@
 # Shared libraries from OS build
 *.dylib
 *.so
+*.dll
 
 # Our uncompressed disk image
 disk.img
