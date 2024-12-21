@@ -29,6 +29,7 @@
 
 use std::io::prelude::*;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicPtr;
 use std::sync::{
 	atomic::{AtomicU32, AtomicU8, Ordering},
 	mpsc, Mutex,
@@ -64,6 +65,7 @@ enum AppEvent {
 /// Our video RAM
 struct Framebuffer<const N: usize> {
 	contents: std::cell::UnsafeCell<[u8; N]>,
+	alt_pointer: AtomicPtr<u32>,
 }
 
 /// A Desktop GUI version of a Neotron BIOS
@@ -96,7 +98,7 @@ struct Hardware {
 /// We only have 'normal' sectored emulated disks
 const BLOCK_SIZE: usize = 512;
 
-/// The VRAM we share in a very hazardous way with the OS.
+/// The default VRAM we share in a very hazardous way with the OS.
 ///
 /// Big enough for 640x480 @ 256 colour.
 // static mut FRAMEBUFFER: [u8; 307200] = [0u8; 307200];
@@ -125,7 +127,6 @@ static BIOS_API: common::Api = common::Api {
 	video_set_mode,
 	video_get_mode,
 	video_get_framebuffer,
-	video_set_framebuffer,
 	video_wait_for_line,
 	memory_get_region,
 	hid_get_event,
@@ -720,8 +721,8 @@ fn main() {
 	}
 
 	let white_on_black = common::video::Attr::new(
-		common::video::TextForegroundColour::WHITE,
-		common::video::TextBackgroundColour::BLACK,
+		common::video::TextForegroundColour::White,
+		common::video::TextBackgroundColour::Black,
 		false,
 	);
 	for char_idx in 0..(80 * 60) {
@@ -855,9 +856,9 @@ extern "C" fn serial_read(
 /// Gregorian calendar. It simply stores time as an incrementing number of
 /// seconds since some epoch, and the number of milliseconds since that second
 /// began. A day is assumed to be exactly 86,400 seconds long. This is a lot
-/// like POSIX time, except we have a different epoch
-/// - the Neotron epoch is 2000-01-01T00:00:00Z. It is highly recommend that you
-/// store UTC in the BIOS and use the OS to handle time-zones.
+/// like POSIX time, except we have a different epoch - the Neotron epoch is
+/// 2000-01-01T00:00:00Z. It is highly recommend that you store UTC in the BIOS
+/// and use the OS to handle time-zones.
 ///
 /// If the BIOS does not have a battery-backed clock, or if that battery has
 /// failed to keep time, the system starts up assuming it is the epoch.
@@ -895,7 +896,7 @@ extern "C" fn time_clock_set(time: common::Time) {
 extern "C" fn configuration_get(mut os_buffer: common::FfiBuffer) -> common::ApiResult<usize> {
 	let file_path = CONFIG_FILE_PATH.lock().unwrap().clone();
 	let Some(os_buffer) = os_buffer.as_mut_slice() else {
-		return common::ApiResult::Err(common::Error::DeviceError(0));
+		return common::ApiResult::Err(common::Error::DeviceError);
 	};
 	match file_path.as_ref() {
 		Some(path) => match std::fs::read(path) {
@@ -907,7 +908,7 @@ extern "C" fn configuration_get(mut os_buffer: common::FfiBuffer) -> common::Api
 			}
 			Err(_e) => {
 				println!("Failed to get config from {:?}", path);
-				common::ApiResult::Err(common::Error::DeviceError(0))
+				common::ApiResult::Err(common::Error::DeviceError)
 			}
 		},
 		None => common::ApiResult::Err(common::Error::Unimplemented),
@@ -924,7 +925,7 @@ extern "C" fn configuration_set(buffer: common::FfiByteSlice) -> common::ApiResu
 			Ok(_) => common::ApiResult::Ok(()),
 			Err(_e) => {
 				println!("Failed to write config to {:?}", path);
-				common::ApiResult::Err(common::Error::DeviceError(0))
+				common::ApiResult::Err(common::Error::DeviceError)
 			}
 		},
 		None => common::ApiResult::Err(common::Error::Unimplemented),
@@ -943,13 +944,7 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 /// Switch to a new video mode.
 ///
 /// The contents of the screen are undefined after a call to this function.
-///
-/// If the BIOS does not have enough reserved RAM (or dedicated VRAM) to
-/// support this mode, the change will succeed but a subsequent call to
-/// `video_get_framebuffer` will return `null`. You must then supply a
-/// pointer to a block of size `Mode::frame_size_bytes()` to
-/// `video_set_framebuffer` before any video will appear.
-extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()> {
+extern "C" fn video_set_mode(mode: common::video::Mode, fb: *mut u32) -> common::ApiResult<()> {
 	info!("video_set_mode({:?})", mode);
 	match mode.timing() {
 		common::video::Timing::T640x480 => {
@@ -959,9 +954,7 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()>
 			// OK
 		}
 		_ => {
-			return common::ApiResult::Err(common::Error::UnsupportedConfiguration(
-				mode.as_u8() as u16
-			));
+			return common::ApiResult::Err(common::Error::UnsupportedConfiguration);
 		}
 	}
 	match mode.format() {
@@ -972,15 +965,14 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()>
 			// OK
 		}
 		_ => {
-			return common::ApiResult::Err(common::Error::UnsupportedConfiguration(
-				mode.as_u8() as u16
-			));
+			return common::ApiResult::Err(common::Error::UnsupportedConfiguration);
 		}
 	}
 
 	// We know this is a valid video mode because it was set with `video_set_mode`.
 	let mode_value = mode.as_u8();
-	VIDEO_MODE.store(mode_value, Ordering::SeqCst);
+	VIDEO_MODE.store(mode_value, Ordering::Relaxed);
+	FRAMEBUFFER.alt_pointer.store(fb, Ordering::Relaxed);
 	common::ApiResult::Ok(())
 }
 
@@ -991,7 +983,7 @@ extern "C" fn video_set_mode(mode: common::video::Mode) -> common::ApiResult<()>
 /// serviced without supplying extra RAM.
 extern "C" fn video_get_mode() -> common::video::Mode {
 	debug!("video_get_mode()");
-	let mode_value = VIDEO_MODE.load(Ordering::SeqCst);
+	let mode_value = VIDEO_MODE.load(Ordering::Relaxed);
 	// We know this is a valid video mode because it was set with `video_set_mode`.
 	unsafe { common::video::Mode::from_u8(mode_value) }
 }
@@ -1002,32 +994,10 @@ extern "C" fn video_get_mode() -> common::video::Mode {
 /// meaning of the data we write, and the size of the region we are
 /// allowed to write to, is a function of the current video mode (see
 /// `video_get_mode`).
-///
-/// This function will return `null` if the BIOS isn't able to support the
-/// current video mode from its memory reserves. If that happens, you will
-/// need to use some OS RAM or Application RAM and provide that as a
-/// framebuffer to `video_set_framebuffer`. The BIOS will always be able
-/// to provide the 'basic' text buffer experience from reserves, so this
-/// function will never return `null` on start-up.
-extern "C" fn video_get_framebuffer() -> *mut u8 {
-	let p = FRAMEBUFFER.get_pointer();
+extern "C" fn video_get_framebuffer() -> *mut u32 {
+	let p = FRAMEBUFFER.get_pointer() as *mut u32;
 	debug!("video_get_framebuffer() -> {:p}", p);
 	p
-}
-
-/// Set the framebuffer address.
-///
-/// Tell the BIOS where it should start fetching pixel or textual data from
-/// (depending on the current video mode).
-///
-/// This value is forgotten after a video mode change and must be re-supplied.
-///
-/// # Safety
-///
-/// The pointer must point to enough video memory to handle the current video
-/// mode, and any future video mode you set.
-unsafe extern "C" fn video_set_framebuffer(_buffer: *const u8) -> common::ApiResult<()> {
-	Err(common::Error::Unimplemented).into()
 }
 
 /// Find out whether the given video mode needs more VRAM than we currently have.
@@ -1072,7 +1042,7 @@ extern "C" fn memory_get_region(region: u8) -> common::FfiOption<common::MemoryR
 			common::FfiOption::Some(common::MemoryRegion {
 				start: unsafe { MEMORY_BLOCK.0 },
 				length: unsafe { MEMORY_BLOCK.1 },
-				kind: common::MemoryKind::Ram,
+				kind: common::FfiMemoryKind::from(common::MemoryKind::Ram),
 			})
 		}
 		_ => common::FfiOption::None,
@@ -1269,7 +1239,7 @@ extern "C" fn video_get_palette(index: u8) -> common::FfiOption<common::video::R
 	debug!("video_get_palette({})", index);
 	let entry = PALETTE.get(usize::from(index));
 	let entry_value =
-		entry.map(|raw| common::video::RGBColour::from_packed(raw.load(Ordering::SeqCst)));
+		entry.map(|raw| common::video::RGBColour::from_packed(raw.load(Ordering::Relaxed)));
 	match entry_value {
 		Some(rgb) => common::FfiOption::Some(rgb),
 		None => common::FfiOption::None,
@@ -1279,7 +1249,7 @@ extern "C" fn video_get_palette(index: u8) -> common::FfiOption<common::video::R
 extern "C" fn video_set_palette(index: u8, rgb: common::video::RGBColour) {
 	debug!("video_set_palette({}, #{:6x})", index, rgb.as_packed());
 	if let Some(e) = PALETTE.get(usize::from(index)) {
-		e.store(rgb.as_packed(), Ordering::SeqCst);
+		e.store(rgb.as_packed(), Ordering::Relaxed);
 	}
 }
 
@@ -1290,7 +1260,7 @@ unsafe extern "C" fn video_set_whole_palette(
 	debug!("video_set_whole_palette({:p}, {})", palette, length);
 	let slice = std::slice::from_raw_parts(palette, length);
 	for (entry, new_rgb) in PALETTE.iter().zip(slice) {
-		entry.store(new_rgb.as_packed(), Ordering::SeqCst);
+		entry.store(new_rgb.as_packed(), Ordering::Relaxed);
 	}
 }
 
@@ -1416,7 +1386,7 @@ extern "C" fn block_dev_get_info(dev_id: u8) -> common::FfiOption<common::block_
 		match &mut hw.disk_file {
 			Some(file) => common::FfiOption::Some(common::block_dev::DeviceInfo {
 				name: common::FfiString::new("File0"),
-				device_type: common::block_dev::DeviceType::HardDiskDrive,
+				device_type: common::block_dev::DeviceType::HardDiskDrive.into(),
 				block_size: BLOCK_SIZE as u32,
 				num_blocks: file.metadata().unwrap().len() / (BLOCK_SIZE as u64),
 				ejectable: false,
@@ -1460,11 +1430,11 @@ extern "C" fn block_write(
 				let buffer_slice = &buffer.as_slice()[0..usize::from(num_blocks) * BLOCK_SIZE];
 				if let Err(e) = file.write_all(buffer_slice) {
 					log::warn!("Failed to write to disk image: {:?}", e);
-					return common::ApiResult::Err(common::Error::DeviceError(0));
+					return common::ApiResult::Err(common::Error::DeviceError);
 				}
 				common::ApiResult::Ok(())
 			}
-			None => common::ApiResult::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError),
 		}
 	} else {
 		common::ApiResult::Err(common::Error::InvalidDevice)
@@ -1496,12 +1466,12 @@ extern "C" fn block_read(
 					let buffer_slice = &mut buffer_slice[0..usize::from(num_blocks) * BLOCK_SIZE];
 					if let Err(e) = file.read_exact(buffer_slice) {
 						log::warn!("Failed to read from disk image: {:?}", e);
-						return common::ApiResult::Err(common::Error::DeviceError(0));
+						return common::ApiResult::Err(common::Error::DeviceError);
 					}
 				}
 				common::ApiResult::Ok(())
 			}
-			None => common::ApiResult::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError),
 		}
 	} else {
 		common::ApiResult::Err(common::Error::InvalidDevice)
@@ -1533,15 +1503,15 @@ extern "C" fn block_verify(
 				let mut read_buffer = vec![0u8; buffer_slice.len()];
 				if let Err(e) = file.read_exact(&mut read_buffer) {
 					log::warn!("Failed to write to disk image: {:?}", e);
-					return common::ApiResult::Err(common::Error::DeviceError(0));
+					return common::ApiResult::Err(common::Error::DeviceError);
 				}
 				if read_buffer.as_slice() == buffer_slice {
 					common::ApiResult::Ok(())
 				} else {
-					common::ApiResult::Err(common::Error::DeviceError(1))
+					common::ApiResult::Err(common::Error::DeviceError)
 				}
 			}
-			None => common::ApiResult::Err(common::Error::DeviceError(0)),
+			None => common::ApiResult::Err(common::Error::DeviceError),
 		}
 	} else {
 		common::ApiResult::Err(common::Error::InvalidDevice)
@@ -1552,7 +1522,7 @@ extern "C" fn power_idle() {
 	std::thread::sleep(std::time::Duration::from_millis(1));
 }
 
-extern "C" fn power_control(mode: common::PowerMode) -> ! {
+extern "C" fn power_control(mode: common::FfiPowerMode) -> ! {
 	println!("Got power mode {:?}, but quitting...", mode);
 	std::process::exit(0);
 }
@@ -1562,7 +1532,7 @@ extern "C" fn compare_and_swap_bool(
 	old_value: bool,
 	new_value: bool,
 ) -> bool {
-	item.compare_exchange(old_value, new_value, Ordering::SeqCst, Ordering::SeqCst)
+	item.compare_exchange(old_value, new_value, Ordering::Relaxed, Ordering::Relaxed)
 		.is_ok()
 }
 
@@ -1667,7 +1637,7 @@ impl PixEngine for MyApp {
 	///
 	/// We convert the contents of `FRAMEBUFFER` into pixels on the canvas.
 	fn on_update(&mut self, s: &mut PixState) -> PixResult<()> {
-		let mode_value = VIDEO_MODE.load(Ordering::SeqCst);
+		let mode_value = VIDEO_MODE.load(Ordering::Relaxed);
 		let new_mode = unsafe { common::video::Mode::from_u8(mode_value) };
 		if new_mode != self.mode {
 			self.mode = new_mode;
@@ -1700,10 +1670,10 @@ impl PixEngine for MyApp {
 				let x = col * 8;
 				let glyph = FRAMEBUFFER.get_at(byte_offset);
 				let attr = common::video::Attr(FRAMEBUFFER.get_at(byte_offset + 1));
-				let fg_idx = attr.fg().as_u8();
-				let bg_idx = attr.bg().as_u8();
+				let fg_idx = attr.fg().make_ffi_safe().0;
+				let bg_idx = attr.bg().make_ffi_safe().0;
 				let bg =
-					RGBColour::from_packed(PALETTE[usize::from(bg_idx)].load(Ordering::SeqCst));
+					RGBColour::from_packed(PALETTE[usize::from(bg_idx)].load(Ordering::Relaxed));
 				let glyph_box = rect!(i32::from(x), i32::from(y), 8i32, font_height as i32,);
 				s.fill(rgb!(bg.red(), bg.green(), bg.blue()));
 				s.rect(glyph_box)?;
@@ -1723,6 +1693,7 @@ impl<const N: usize> Framebuffer<N> {
 	const fn new() -> Framebuffer<N> {
 		Framebuffer {
 			contents: std::cell::UnsafeCell::new([0u8; N]),
+			alt_pointer: AtomicPtr::new(core::ptr::null_mut()),
 		}
 	}
 
@@ -1732,11 +1703,8 @@ impl<const N: usize> Framebuffer<N> {
 	///
 	/// Uses volatile writes.
 	fn write_at(&self, offset: usize, value: u8) {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer write");
-		}
 		unsafe {
-			let array_ptr = self.contents.get() as *mut u8;
+			let array_ptr = self.get_pointer() as *mut u8;
 			let byte_ptr = array_ptr.add(offset);
 			byte_ptr.write_volatile(value);
 		}
@@ -1748,19 +1716,20 @@ impl<const N: usize> Framebuffer<N> {
 	///
 	/// Uses volatile reads.
 	fn get_at(&self, offset: usize) -> u8 {
-		if offset > std::mem::size_of_val(&self.contents) {
-			panic!("Out of bounds framebuffer read");
-		}
 		unsafe {
-			let array_ptr = self.contents.get() as *const u8;
+			let array_ptr = self.get_pointer() as *const u8;
 			let byte_ptr = array_ptr.add(offset);
 			byte_ptr.read_volatile()
 		}
 	}
 
 	/// Get a pointer to the framebuffer you can give to the OS.
-	fn get_pointer(&self) -> *mut u8 {
-		self.contents.get() as *mut u8
+	fn get_pointer(&self) -> *mut u32 {
+		let mut p = self.alt_pointer.load(Ordering::Relaxed);
+		if p.is_null() {
+			p = self.contents.get() as *mut u32;
+		}
+		p
 	}
 }
 
