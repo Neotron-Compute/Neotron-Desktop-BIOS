@@ -95,7 +95,12 @@ The file `libneotron_os.so` is not supplied. You can build it with:
 
 ### Unreleased Changes ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/main))
 
+* None
+
+### v0.2.0 ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/v0.2.0))
+
 * Added config get/set
+* Updated to Neotron Common BIOS v0.12 to support Neotron OS v0.8
 
 ### v0.1.0 ([Source](https://github.com/neotron-compute/Neotron-Desktop-BIOS/tree/v0.1.0))
 
