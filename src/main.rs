@@ -54,6 +54,7 @@ struct MyApp {
 	font8x16: Vec<TextureId>,
 	font8x8: Vec<TextureId>,
 	sender: mpsc::Sender<AppEvent>,
+	reset: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -233,9 +234,15 @@ fn main() {
 		*CONFIG_FILE_PATH.lock().unwrap() = Some(config_path);
 	}
 
+	let default_mode = unsafe { common::video::Mode::from_u8(0) };
+	let width = (default_mode.horizontal_pixels() as f32) * SCALE_FACTOR;
+	let height = (default_mode.vertical_lines() as f32) * SCALE_FACTOR;
+	info!("Default Window set to {} x {}", width, height);
+
 	// Make a window
 	let mut engine = Engine::builder()
-		.dimensions(640, 480)
+		.dimensions(width as u32, height as u32)
+		.scale(SCALE_FACTOR, SCALE_FACTOR)
 		.title("Neotron Desktop BIOS")
 		.show_frame_rate()
 		.target_frame_rate(60)
@@ -243,10 +250,11 @@ fn main() {
 		.unwrap();
 	let (sender, receiver) = mpsc::channel();
 	let mut app = MyApp {
-		mode: unsafe { common::video::Mode::from_u8(0) },
+		mode: default_mode,
 		font8x16: Vec::new(),
 		font8x8: Vec::new(),
 		sender,
+		reset: true,
 	};
 
 	EV_QUEUE.lock().unwrap().replace(receiver);
@@ -425,11 +433,16 @@ extern "C" fn configuration_set(buffer: common::FfiByteSlice) -> common::ApiResu
 
 /// Does this Neotron BIOS support this video mode?
 extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
-	debug!("video_is_valid_mode()");
-	mode == common::video::Mode::new(
-		common::video::Timing::T640x480,
-		common::video::Format::Text8x16,
-	)
+	let result = match mode.as_u8() {
+		// 640x480 80x30 text mode
+		0 => true,
+		// 640x480 80x60 text mode
+		1 => true,
+		// nothing else will work
+		_ => false,
+	};
+	debug!("video_is_valid_mode({:?}) = {}", mode, result);
+	result
 }
 
 /// Switch to a new video mode.
@@ -1125,7 +1138,18 @@ impl PixEngine for MyApp {
 				self.sender.send(AppEvent::KeyDown(*key)).unwrap();
 				Ok(true)
 			}
-			_ => Ok(false),
+			Event::Window {
+				win_event: WindowEvent::Moved(_, _),
+				..
+			} => {
+				// need to reset the scale when the window is moved?
+				self.reset = true;
+				Ok(true)
+			}
+			_ => {
+				debug!("Didn't know about {:?}", event);
+				Ok(false)
+			}
 		}
 	}
 
@@ -1135,7 +1159,9 @@ impl PixEngine for MyApp {
 	fn on_update(&mut self, s: &mut PixState) -> PixResult<()> {
 		let mode_value = VIDEO_MODE.load(Ordering::Relaxed);
 		let new_mode = unsafe { common::video::Mode::from_u8(mode_value) };
-		if new_mode != self.mode {
+		if new_mode != self.mode || self.reset {
+			info!("New video mode detected, or needs reset");
+			self.reset = false;
 			self.mode = new_mode;
 			let width = (new_mode.horizontal_pixels() as f32) * SCALE_FACTOR;
 			let height = (new_mode.vertical_lines() as f32) * SCALE_FACTOR;
