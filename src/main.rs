@@ -438,6 +438,14 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 		0 => true,
 		// 640x480 80x60 text mode
 		1 => true,
+		// 640x480, 8-bpp bitmap mode
+		4 => true,
+		// 640x480, 4-bpp bitmap mode
+		5 => true,
+		// 640x480, 2-bpp bitmap mode
+		6 => true,
+		// 640x480, 1-bpp bitmap mode
+		7 => true,
 		// nothing else will work
 		_ => false,
 	};
@@ -450,29 +458,9 @@ extern "C" fn video_is_valid_mode(mode: common::video::Mode) -> bool {
 /// The contents of the screen are undefined after a call to this function.
 extern "C" fn video_set_mode(mode: common::video::Mode, fb: *mut u32) -> common::ApiResult<()> {
 	info!("video_set_mode({:?})", mode);
-	match mode.timing() {
-		common::video::Timing::T640x480 => {
-			// OK
-		}
-		common::video::Timing::T640x400 => {
-			// OK
-		}
-		_ => {
-			return common::ApiResult::Err(common::Error::UnsupportedConfiguration);
-		}
+	if !video_is_valid_mode(mode) {
+		return common::ApiResult::Err(common::Error::UnsupportedConfiguration);
 	}
-	match mode.format() {
-		common::video::Format::Text8x16 => {
-			// OK
-		}
-		common::video::Format::Text8x8 => {
-			// OK
-		}
-		_ => {
-			return common::ApiResult::Err(common::Error::UnsupportedConfiguration);
-		}
-	}
-
 	// We know this is a valid video mode because it was set with `video_set_mode`.
 	let mode_value = mode.as_u8();
 	VIDEO_MODE.store(mode_value, Ordering::Relaxed);
@@ -499,7 +487,7 @@ extern "C" fn video_get_mode() -> common::video::Mode {
 /// allowed to write to, is a function of the current video mode (see
 /// `video_get_mode`).
 extern "C" fn video_get_framebuffer() -> *mut u32 {
-	let p = FRAMEBUFFER.get_pointer() as *mut u32;
+	let p = FRAMEBUFFER.get_pointer();
 	debug!("video_get_framebuffer() -> {:p}", p);
 	p
 }
@@ -535,10 +523,10 @@ extern "C" fn memory_get_region(region: u8) -> common::FfiOption<common::MemoryR
 	match region {
 		0 => {
 			if unsafe { MEMORY_BLOCK.0.is_null() } {
-				// Allocate 256 KiB of storage space for the OS to use
-				let mut data = Box::new([0u8; 256 * 1024]);
+				// Allocate 1 MiB of storage space for the OS to use
+				let mut data = Box::new([0u8; 1024 * 1024]);
 				unsafe {
-					MEMORY_BLOCK.0 = data.as_mut_ptr() as *mut u8;
+					MEMORY_BLOCK.0 = data.as_mut_ptr();
 					MEMORY_BLOCK.1 = std::mem::size_of_val(&*data);
 				}
 				std::mem::forget(data);
@@ -1101,6 +1089,86 @@ impl MyApp {
 		Self::render_font(&font::font8::FONT, &mut self.font8x8, s)?;
 		Ok(())
 	}
+
+	fn render_text(
+		&self,
+		font: &[pix_engine::texture::TextureId],
+		font_height: u16,
+		s: &mut PixState,
+	) -> PixResult<()> {
+		let num_cols = self.mode.text_width().unwrap();
+		let num_rows = self.mode.text_height().unwrap();
+		let mut bg_idx = 0;
+		let mut bg_rgb = {
+			let bg = RGBColour::from_packed(PALETTE[usize::from(bg_idx)].load(Ordering::Relaxed));
+			rgb!(bg.red(), bg.green(), bg.blue())
+		};
+		s.stroke(None);
+		// FRAMEBUFFER is an num_cols x num_rows size array of (u8_glyph, u8_attr).
+		for row in 0..num_rows {
+			let y = row * font_height;
+			for col in 0..num_cols {
+				let cell_no = (row * num_cols) + col;
+				let byte_offset = usize::from(cell_no) * 2;
+				let x = col * 8;
+				let glyph = FRAMEBUFFER.get_at(byte_offset);
+				let attr = common::video::Attr(FRAMEBUFFER.get_at(byte_offset + 1));
+				let fg_idx = attr.fg().make_ffi_safe().0;
+				let new_bg_idx = attr.bg().make_ffi_safe().0;
+				if new_bg_idx != bg_idx {
+					bg_idx = new_bg_idx;
+					let bg = RGBColour::from_packed(
+						PALETTE[usize::from(bg_idx)].load(Ordering::Relaxed),
+					);
+					bg_rgb = rgb!(bg.red(), bg.green(), bg.blue());
+				}
+				let glyph_box = rect!(i32::from(x), i32::from(y), 8i32, font_height as i32,);
+				s.fill(bg_rgb);
+				s.rect(glyph_box)?;
+				let slot = (usize::from(glyph) * Self::NUM_FG) + usize::from(fg_idx);
+				s.texture(font[slot], None, Some(glyph_box))?;
+			}
+		}
+		Ok(())
+	}
+
+	fn render_chunky<const BPP: usize>(&self, s: &mut PixState) -> PixResult<()> {
+		let shift = 8 - BPP;
+		let num_colours = 1 << BPP;
+		let pixels_per_byte = 8 / BPP;
+		let num_col_bytes = self.mode.line_size_bytes();
+		let num_rows = self.mode.vertical_lines() as usize;
+		let colours = Self::make_colours(num_colours);
+		for y in 0..num_rows {
+			let y_bytes = y * num_col_bytes;
+			for x_byte in 0..num_col_bytes {
+				let byte_offset = y_bytes + x_byte;
+				let mut data = FRAMEBUFFER.get_at(byte_offset);
+				let x_start = x_byte * pixels_per_byte;
+				for x in 0..pixels_per_byte {
+					let bit = (data >> shift) as usize;
+					s.stroke(colours[bit]);
+					let p = point!((x_start + x) as i32, y as i32);
+					s.point(p)?;
+					data <<= BPP;
+				}
+			}
+		}
+		Ok(())
+	}
+
+	fn make_colours(count: usize) -> Vec<pix_engine::color::Color> {
+		let mut result = vec![];
+		for palette_entry in PALETTE.iter().take(count) {
+			let rgb = RGBColour::from_packed(palette_entry.load(Ordering::Relaxed));
+			result.push(rgb!(rgb.red(), rgb.green(), rgb.blue()));
+		}
+		if count == 2 {
+			// special case - use black/white for 2 colour mode, not black/blue
+			result[1] = rgb!(0xFF, 0xFF, 0xFF);
+		}
+		result
+	}
 }
 
 impl PixEngine for MyApp {
@@ -1168,39 +1236,21 @@ impl PixEngine for MyApp {
 			info!("Window set to {} x {}", width, height);
 			s.set_window_dimensions((width as u32, height as u32))?;
 			s.scale(SCALE_FACTOR, SCALE_FACTOR)?;
+			s.background(rgb!(0, 0, 0));
+			s.clear()?;
 		}
 
 		s.blend_mode(BlendMode::Blend);
 
-		let (font, font_height) = match self.mode.format() {
-			common::video::Format::Text8x16 => (&self.font8x16, 16),
-			common::video::Format::Text8x8 => (&self.font8x8, 8),
+		match self.mode.format() {
+			common::video::Format::Text8x16 => self.render_text(&self.font8x16, 16, s)?,
+			common::video::Format::Text8x8 => self.render_text(&self.font8x8, 8, s)?,
+			common::video::Format::Chunky1 => self.render_chunky::<1>(s)?,
+			common::video::Format::Chunky2 => self.render_chunky::<2>(s)?,
+			common::video::Format::Chunky4 => self.render_chunky::<4>(s)?,
+			common::video::Format::Chunky8 => self.render_chunky::<8>(s)?,
 			_ => {
 				// Unknown mode - do nothing
-				return Ok(());
-			}
-		};
-
-		let num_cols = self.mode.text_width().unwrap();
-		let num_rows = self.mode.text_height().unwrap();
-		// FRAMEBUFFER is an num_cols x num_rows size array of (u8_glyph, u8_attr).
-		for row in 0..num_rows {
-			let y = row * font_height;
-			for col in 0..num_cols {
-				let cell_no = (row * num_cols) + col;
-				let byte_offset = usize::from(cell_no) * 2;
-				let x = col * 8;
-				let glyph = FRAMEBUFFER.get_at(byte_offset);
-				let attr = common::video::Attr(FRAMEBUFFER.get_at(byte_offset + 1));
-				let fg_idx = attr.fg().make_ffi_safe().0;
-				let bg_idx = attr.bg().make_ffi_safe().0;
-				let bg =
-					RGBColour::from_packed(PALETTE[usize::from(bg_idx)].load(Ordering::Relaxed));
-				let glyph_box = rect!(i32::from(x), i32::from(y), 8i32, font_height as i32,);
-				s.fill(rgb!(bg.red(), bg.green(), bg.blue()));
-				s.rect(glyph_box)?;
-				let slot = (usize::from(glyph) * Self::NUM_FG) + usize::from(fg_idx);
-				s.texture(font[slot], None, Some(glyph_box))?;
 			}
 		}
 
