@@ -1556,7 +1556,12 @@ impl MyApp {
 		for glyph in 0..=255 {
 			for palette_entry in PALETTE.iter().take(Self::NUM_FG) {
 				let fg = RGBColour::from_packed(palette_entry.load(Ordering::Relaxed));
-				info!("Drawing {glyph} in {:06x}", fg.as_packed());
+				debug!(
+					"Drawing glyph {} from font {} in colour {:06x}",
+					glyph,
+					font.name,
+					fg.as_packed()
+				);
 				let texture_id = if texture_buffer.len() > slot {
 					texture_buffer[slot]
 				} else {
