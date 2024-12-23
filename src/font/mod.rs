@@ -39,6 +39,7 @@ pub mod font8;
 
 /// A font
 pub struct Font<'a> {
+	pub name: &'static str,
 	pub height: usize,
 	pub data: &'a [u8],
 }
