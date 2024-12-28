@@ -33,6 +33,7 @@
 
 /// An 8x16 font
 pub static FONT: super::Font = super::Font {
+	name: "8x8",
 	height: 8,
 	data: &DATA,
 };
