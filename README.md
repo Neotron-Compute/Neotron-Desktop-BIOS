@@ -10,23 +10,12 @@ This is the [Neotron](https://github.com/neotron-compute) BIOS that lets you run
 
 This BIOS uses [pix-engine](https://crates.io/crates/pix-engine), so should run on any platform that pix-engine supports.
 
-If you have a Mac, run:
-
-```console
-brew install sdl2
-brew install sdl2_mixer
-brew install sdl2_image
-export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib" 
-```
-
-You will need to re-run the `export` command before you re-build the application.
-
 ## Building on Linux
 
 Build and run this BIOS (and use it to boot Neotron OS) with...
 
 ```console
-~ $ git checkout https://github.com/neotron-compute/Neotron-Desktop-BIOS.git
+~ $ git clone https://github.com/Neotron-Compute/Neotron-Desktop-BIOS.git
 ~ $ cd Neotron-Desktop-BIOS
 ~/Neotron-Desktop-BIOS $ gunzip -c disk.img.gz > disk.img
 ~/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --nvram=./nvram.dat --os=./libneotron_os.so --disk=./disk.img
@@ -37,12 +26,49 @@ In the OS run the `shutdown` command to quit.
 The file `libneotron_os.so` is not supplied. You can build it with:
 
 ```console
-~ $ git checkout https://github.com/neotron-compute/neotron-os.git
+~ $ git clone https://github.com/neotron-compute/neotron-os.git
 ~ $ cd neotron-os
 ~/neotron-os $ cargo build --release --lib
 ~/neotron-os $ ls ./target/release/*.so
 ./target/release/libneotron_os.so
 ~/neotron-os $ cp ./target/release/libneotron_os.so ~/Neotron-Desktop-BIOS
+```
+
+## Building on MacOS
+
+Install dependencies first:
+
+```console
+brew install sdl2
+brew install sdl2_ttf
+brew install sdl2_gfx
+brew install sdl2_mixer
+brew install sdl2_image
+export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
+```
+
+You will need to re-run the `export` command before you re-build the application.
+
+
+The file `libneotron_os.dylib` is not supplied. Build it first with:
+
+```console
+~ $ mkdir Neotron
+~ $ cd Neotron
+~/Neotron $ git clone https://github.com/neotron-compute/neotron-os.git
+~/Neotron $ cd neotron-os
+~/Neotron/neotron-os $ cargo build --release --lib
+~/Neotron/neotron-os $ ls ./target/release/*.so
+./target/release/libneotron_os.dylib
+```
+
+```console
+~ $ cd ~/Neotron
+~/Neotron $ git clone https://github.com/Neotron-Compute/Neotron-Desktop-BIOS.git
+~/Neotron $ cd Neotron-Desktop-BIOS
+~/Neotron/Neotron-Desktop-BIOS $ gunzip -c disk.img.gz > disk.img
+~/Neotron/Neotron-Desktop-BIOS $ cp ~/Neotron/neotron-os/target/release/libneotron_os.dylib ./
+~/Neotron/Neotron-Desktop-BIOS $ RUST_LOG=debug cargo run -- --nvram=./nvram.dat --os=./libneotron_os.dylib --disk=./disk.img
 ```
 
 ## Building on Windows
@@ -75,7 +101,7 @@ The file `libneotron_os.so` is not supplied. You can build it with:
    The file `neotron_os.dll` is not supplied. You can build it with:
 
    ```console
-   C:\Users\user\Documents> git checkout https://github.com/neotron-compute/neotron-os.git
+   C:\Users\user\Documents> git clone https://github.com/neotron-compute/neotron-os.git
    C:\Users\user\Documents> cd neotron-os
    C:\Users\user\Documents\neotron-os> cargo build --release --lib
    C:\Users\user\Documents\neotron-os> copy .\target\release\neotron_os.dll ..\Neotron-Desktop-BIOS
